@@ -1,0 +1,42 @@
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+
+const documentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  type: { type: String, enum: ['license', 'id', 'other'], required: true },
+  url: { type: String, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  uploadedAt: { type: Date, default: Date.now }
+}, { _id: true });
+
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, lowercase: true },
+  name: { type: String, required: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  walletBalance: { type: Number, default: 10 },
+  documents: [documentSchema],
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Method to compare password
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Remove password from JSON output
+userSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
+export default mongoose.model('User', userSchema);
+

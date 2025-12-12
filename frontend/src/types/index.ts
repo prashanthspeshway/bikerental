@@ -1,0 +1,41 @@
+export interface Bike {
+  id: string;
+  name: string;
+  type: 'electric' | 'mountain' | 'city' | 'sport';
+  image: string;
+  pricePerHour: number;
+  kmLimit: number;
+  available: boolean;
+  description: string;
+  features: string[];
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'user' | 'admin';
+  walletBalance: number;
+  documents: Document[];
+  createdAt: string;
+}
+
+export interface Document {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'license' | 'id' | 'other';
+  url: string;
+  status: 'pending' | 'approved' | 'rejected';
+  uploadedAt: string;
+}
+
+export interface Rental {
+  id: string;
+  bikeId: string;
+  userId: string;
+  startTime: string;
+  endTime?: string;
+  totalCost?: number;
+  status: 'active' | 'completed' | 'cancelled';
+}
