@@ -27,17 +27,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Bike not found' });
     }
     // Transform _id to id for frontend compatibility
-    res.json({
-      id: bike._id.toString(),
-      name: bike.name,
-      type: bike.type,
-      image: bike.image,
-      pricePerHour: bike.pricePerHour,
-      kmLimit: bike.kmLimit,
-      available: bike.available,
-      description: bike.description,
-      features: bike.features
-    });
+    res.json(transformBike(bike));
   } catch (error) {
     console.error('Get bike error:', error);
     res.status(500).json({ message: 'Error fetching bike' });
@@ -97,17 +87,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     // Transform _id to id for frontend compatibility
-    res.json({
-      id: bike._id.toString(),
-      name: bike.name,
-      type: bike.type,
-      image: bike.image,
-      pricePerHour: bike.pricePerHour,
-      kmLimit: bike.kmLimit,
-      available: bike.available,
-      description: bike.description,
-      features: bike.features
-    });
+    res.json(transformBike(bike));
   } catch (error) {
     console.error('Update bike error:', error);
     res.status(500).json({ message: 'Error updating bike' });

@@ -151,7 +151,8 @@ router.post('/:id/end', authenticateToken, async (req, res) => {
     rental.bikeId.available = true;
     await rental.bikeId.save();
 
-    res.json(rental);
+    // Transform _id to id for frontend compatibility
+    res.json(transformRental(rental));
   } catch (error) {
     console.error('End rental error:', error);
     res.status(500).json({ message: 'Error ending rental' });
@@ -184,7 +185,8 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
     rental.bikeId.available = true;
     await rental.bikeId.save();
 
-    res.json(rental);
+    // Transform _id to id for frontend compatibility
+    res.json(transformRental(rental));
   } catch (error) {
     console.error('Cancel rental error:', error);
     res.status(500).json({ message: 'Error cancelling rental' });
