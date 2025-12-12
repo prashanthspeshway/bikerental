@@ -1,8 +1,10 @@
 # Setup Instructions
 
-## MongoDB Configuration
+## Environment Configuration
 
-1. Create `backend/.env` file with the following content:
+### Backend Environment
+
+The `backend/.env` file has been created with the MongoDB credentials. If you need to recreate it, copy from `backend/.env.example`:
 
 ```env
 PORT=3000
@@ -11,6 +13,14 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
 MONGODB_URI=mongodb+srv://bikerental:saranya@cluster0.602qj8l.mongodb.net/?appName=Cluster0
 MONGODB_DB_NAME=bikerental
+```
+
+### Frontend Environment
+
+The `frontend/.env` file has been created. If you need to recreate it, copy from `frontend/.env.example`:
+
+```env
+VITE_API_URL=http://localhost:3000/api
 ```
 
 ## Install Dependencies
