@@ -134,9 +134,9 @@ export default function Admin() {
   ];
 
   const stats = [
-    { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero' },
-    { label: 'Active Users', value: users.length, icon: Users, color: 'bg-accent' },
-    { label: 'Pending Docs', value: documents.filter(d => d.status === 'pending').length, icon: FileText, color: 'bg-secondary' },
+    { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero', onClick: () => setActiveTab('bikes') },
+    { label: 'Active Users', value: users.length, icon: Users, color: 'bg-accent', onClick: () => setActiveTab('users') },
+    { label: 'Pending Docs', value: documents.filter(d => d.status === 'pending').length, icon: FileText, color: 'bg-secondary', onClick: () => setActiveTab('documents') },
     { label: 'Total Revenue', value: '$0', icon: DollarSign, color: 'gradient-hero' },
   ];
 
@@ -215,7 +215,11 @@ export default function Admin() {
             {/* Stats */}
             <div className="grid md:grid-cols-4 gap-4">
               {stats.map((stat) => (
-                <div key={stat.label} className="bg-card rounded-2xl shadow-card p-6">
+                <div 
+                  key={stat.label} 
+                  className={`bg-card rounded-2xl shadow-card p-6 ${stat.onClick ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+                  onClick={stat.onClick}
+                >
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center`}>
                       <stat.icon className="h-6 w-6 text-primary-foreground" />
@@ -227,38 +231,6 @@ export default function Admin() {
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* Recent Documents */}
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <h3 className="font-display font-semibold text-lg mb-4">Pending Documents</h3>
-              <div className="space-y-4">
-                {documents.filter(d => d.status === 'pending').length > 0 ? (
-                  documents.filter(d => d.status === 'pending').map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-secondary-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{doc.name}</p>
-                          <p className="text-sm text-muted-foreground">{doc.type} • {new Date(doc.uploadedAt).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">No pending documents</p>
-                )}
-              </div>
             </div>
           </div>
         )}
@@ -612,6 +584,142 @@ export default function Admin() {
                     Close
                   </Button>
                   <Button onClick={() => handleVerifyUser(selectedUser.id)}>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Verify User
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* User Documents Dialog */}
+      <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Documents Review</DialogTitle>
+            <DialogDescription>
+              Review and verify documents for {selectedDocumentUser?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDocumentUser && (
+            <div className="space-y-6">
+              {/* User Info */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{selectedDocumentUser.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium">{selectedDocumentUser.email}</p>
+                  </div>
+                  {selectedDocumentUser.mobile && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Mobile</p>
+                      <p className="font-medium">{selectedDocumentUser.mobile}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    {selectedDocumentUser.isVerified ? (
+                      <Badge className="bg-accent/10 text-accent">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Verified
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-destructive/10 text-destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Unverified
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents Grid */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {selectedDocumentUser.documents && selectedDocumentUser.documents.length > 0 ? (
+                  selectedDocumentUser.documents.map((doc: any) => {
+                    const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
+                    return (
+                      <div key={doc.id || doc._id} className="border rounded-lg p-4 bg-card">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="font-semibold">{doc.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                            <p className="text-xs text-muted-foreground">{doc.name}</p>
+                          </div>
+                          <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {doc.status}
+                          </Badge>
+                        </div>
+                        
+                        {/* Document Preview */}
+                        <div className="mb-3 border rounded-lg overflow-hidden bg-muted/30">
+                          {doc.url && (
+                            <img 
+                              src={doc.url} 
+                              alt={doc.name}
+                              className="w-full h-48 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/documents/placeholder.pdf';
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                          </p>
+                          {doc.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  handleDocumentAction(doc.id || doc._id, 'reject');
+                                  loadData();
+                                }}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => {
+                                  handleDocumentAction(doc.id || doc._id, 'approve');
+                                  loadData();
+                                }}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-muted-foreground text-center py-8 col-span-2">No documents uploaded</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              {!selectedDocumentUser.isVerified && selectedDocumentUser.documents?.some((d: any) => d.status === 'approved') && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsDocumentDialogOpen(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => {
+                    handleVerifyUser(selectedDocumentUser.id);
+                    setIsDocumentDialogOpen(false);
+                  }}>
                     <Shield className="h-4 w-4 mr-2" />
                     Verify User
                   </Button>
