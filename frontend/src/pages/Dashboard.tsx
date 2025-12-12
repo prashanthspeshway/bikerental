@@ -282,28 +282,24 @@ export default function Dashboard() {
                     <div className="space-y-4">
                       {rentals.slice(0, 3).length > 0 ? (
                         rentals.slice(0, 3).map((rental) => {
-                          const startDate = new Date(rental.startTime);
-                          const endDate = rental.endTime ? new Date(rental.endTime) : new Date();
-                          const hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
+                          const StatusIcon = statusStyles[rental.status as keyof typeof statusStyles]?.icon || Clock;
                           return (
                             <div key={rental.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                               <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                  <Bike className="h-5 w-5 text-primary" />
+                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                  <Bike className="h-5 w-5 text-secondary-foreground" />
                                 </div>
                                 <div>
-                                  <p className="font-medium">{rental.bike?.name || 'Unknown Bike'}</p>
+                                  <p className="font-medium">Rental #{rental.id.slice(0, 8)}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {startDate.toLocaleDateString()} • {hours} hour{hours !== 1 ? 's' : ''}
+                                    {new Date(rental.startTime).toLocaleDateString()}
                                   </p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="font-semibold">${rental.totalCost?.toFixed(2) || '0.00'}</p>
-                                <Badge variant="secondary" className="bg-accent/10 text-accent">
-                                  {rental.status}
-                                </Badge>
-                              </div>
+                              <Badge className={statusStyles[rental.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {rental.status.charAt(0).toUpperCase() + rental.status.slice(1)}
+                              </Badge>
                             </div>
                           );
                         })
@@ -318,9 +314,8 @@ export default function Dashboard() {
               {/* Wallet */}
               {activeTab === 'wallet' && (
                 <div className="space-y-6">
-                  {/* Balance Card */}
-                  <div className="bg-card rounded-2xl shadow-card p-8 gradient-dark text-secondary-foreground">
-                    <div className="flex items-start justify-between">
+                  <div className="bg-card rounded-2xl shadow-card p-6">
+                    <div className="flex items-center justify-between mb-6">
                       <div>
                         <p className="text-muted-foreground mb-2">Current Balance</p>
                         <p className="text-4xl font-display font-bold">${user?.walletBalance?.toFixed(2) || '0.00'}</p>
@@ -373,30 +368,181 @@ export default function Dashboard() {
               {/* Documents */}
               {activeTab === 'documents' && (
                 <div className="space-y-6">
-                  {/* Upload Section */}
+                  {/* Personal Information */}
                   <div className="bg-card rounded-2xl shadow-card p-6">
-                    <h3 className="font-display font-semibold text-lg mb-4">Upload Document</h3>
-                    <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-                      <input
-                        type="file"
-                        id="document-upload"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleFileUpload}
-                      />
-                      <label
-                        htmlFor="document-upload"
-                        className="cursor-pointer flex flex-col items-center"
-                      >
-                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                          <Upload className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <p className="font-medium mb-1">Drop your document here or click to browse</p>
-                        <p className="text-sm text-muted-foreground">
-                          Supported: PDF, JPG, PNG (Max 10MB)
-                        </p>
-                      </label>
+                    <h3 className="font-display font-semibold text-lg mb-4">Personal Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Full Name</Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter your full name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mobile">Mobile Number</Label>
+                        <Input
+                          id="mobile"
+                          type="tel"
+                          value={formData.mobile}
+                          onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
+                          placeholder="Enter your mobile number"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Button onClick={handleUpdateProfile}>
+                          Update Profile
+                        </Button>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Document Upload Section */}
+                  <div className="bg-card rounded-2xl shadow-card p-6">
+                    <h3 className="font-display font-semibold text-lg mb-4">Upload Documents</h3>
+                    
+                    {/* Aadhar Card - Front and Back Side by Side */}
+                    <div className="grid md:grid-cols-2 gap-4 mb-4">
+                      <div className="space-y-2">
+                        <Label>Aadhar Card - Front</Label>
+                        <div className="border-2 border-dashed border-border rounded-xl p-4">
+                          <input
+                            type="file"
+                            id="aadhar-front"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange('aadharFront', e)}
+                          />
+                          <label
+                            htmlFor="aadhar-front"
+                            className="cursor-pointer flex flex-col items-center"
+                          >
+                            <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                            <p className="text-sm text-center">
+                              {documentFiles.aadharFront ? documentFiles.aadharFront.name : 'Click to upload'}
+                            </p>
+                          </label>
+                          {documentFiles.aadharFront && (
+                            <Button
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => handleDocumentUpload('aadhar_front', documentFiles.aadharFront!)}
+                            >
+                              Upload
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Aadhar Card - Back</Label>
+                        <div className="border-2 border-dashed border-border rounded-xl p-4">
+                          <input
+                            type="file"
+                            id="aadhar-back"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange('aadharBack', e)}
+                          />
+                          <label
+                            htmlFor="aadhar-back"
+                            className="cursor-pointer flex flex-col items-center"
+                          >
+                            <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                            <p className="text-sm text-center">
+                              {documentFiles.aadharBack ? documentFiles.aadharBack.name : 'Click to upload'}
+                            </p>
+                          </label>
+                          {documentFiles.aadharBack && (
+                            <Button
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => handleDocumentUpload('aadhar_back', documentFiles.aadharBack!)}
+                            >
+                              Upload
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PAN Card and Driving License */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>PAN Card</Label>
+                        <div className="border-2 border-dashed border-border rounded-xl p-4">
+                          <input
+                            type="file"
+                            id="pan"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange('pan', e)}
+                          />
+                          <label
+                            htmlFor="pan"
+                            className="cursor-pointer flex flex-col items-center"
+                          >
+                            <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                            <p className="text-sm text-center">
+                              {documentFiles.pan ? documentFiles.pan.name : 'Click to upload'}
+                            </p>
+                          </label>
+                          {documentFiles.pan && (
+                            <Button
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => handleDocumentUpload('pan', documentFiles.pan!)}
+                            >
+                              Upload
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Driving License</Label>
+                        <div className="border-2 border-dashed border-border rounded-xl p-4">
+                          <input
+                            type="file"
+                            id="driving-license"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange('drivingLicense', e)}
+                          />
+                          <label
+                            htmlFor="driving-license"
+                            className="cursor-pointer flex flex-col items-center"
+                          >
+                            <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                            <p className="text-sm text-center">
+                              {documentFiles.drivingLicense ? documentFiles.drivingLicense.name : 'Click to upload'}
+                            </p>
+                          </label>
+                          {documentFiles.drivingLicense && (
+                            <Button
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => handleDocumentUpload('driving_license', documentFiles.drivingLicense!)}
+                            >
+                              Upload
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Supported: PDF, JPG, PNG (Max 10MB per file)
+                    </p>
                   </div>
 
                   {/* Document List */}
@@ -407,7 +553,7 @@ export default function Dashboard() {
                         documents.map((doc) => {
                           const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
                           return (
-                            <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                            <div key={doc.id || doc._id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
                                   <FileText className="h-5 w-5 text-secondary-foreground" />
@@ -415,7 +561,7 @@ export default function Dashboard() {
                                 <div>
                                   <p className="font-medium">{doc.name}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                                    {doc.type.replace('_', ' ')} • Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                                   </p>
                                 </div>
                               </div>
@@ -441,29 +587,27 @@ export default function Dashboard() {
                   <div className="space-y-4">
                     {rentals.length > 0 ? (
                       rentals.map((rental) => {
-                        const startDate = new Date(rental.startTime);
-                        const endDate = rental.endTime ? new Date(rental.endTime) : new Date();
-                        const hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
+                        const StatusIcon = statusStyles[rental.status as keyof typeof statusStyles]?.icon || Clock;
                         return (
                           <div key={rental.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                                <Bike className="h-6 w-6 text-primary" />
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <Bike className="h-5 w-5 text-secondary-foreground" />
                               </div>
                               <div>
-                                <p className="font-medium">{rental.bike?.name || 'Unknown Bike'}</p>
+                                <p className="font-medium">Rental #{rental.id.slice(0, 8)}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {startDate.toLocaleDateString()} • {hours} hour{hours !== 1 ? 's' : ''}
+                                  {new Date(rental.startTime).toLocaleDateString()} - {rental.endTime ? new Date(rental.endTime).toLocaleDateString() : 'Active'}
                                 </p>
+                                {rental.totalCost && (
+                                  <p className="text-sm font-medium">${rental.totalCost.toFixed(2)}</p>
+                                )}
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-lg">${rental.totalCost?.toFixed(2) || '0.00'}</p>
-                              <Badge variant="secondary" className="bg-accent/10 text-accent">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                {rental.status}
-                              </Badge>
-                            </div>
+                            <Badge className={statusStyles[rental.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                              <StatusIcon className="h-3 w-3 mr-1" />
+                              {rental.status.charAt(0).toUpperCase() + rental.status.slice(1)}
+                            </Badge>
                           </div>
                         );
                       })
@@ -477,7 +621,6 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );

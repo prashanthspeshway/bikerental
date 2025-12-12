@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 
 const documentSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  type: { type: String, enum: ['license', 'id', 'other'], required: true },
+  type: { type: String, enum: ['aadhar_front', 'aadhar_back', 'pan', 'driving_license', 'license', 'id', 'other'], required: true },
   url: { type: String, required: true },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   uploadedAt: { type: Date, default: Date.now }

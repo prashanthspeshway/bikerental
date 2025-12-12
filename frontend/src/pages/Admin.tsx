@@ -459,6 +459,124 @@ export default function Admin() {
           </div>
         )}
       </main>
+
+      {/* User Details Dialog */}
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+            <DialogDescription>
+              View and verify user information and documents
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUser && (
+            <div className="space-y-6">
+              {/* User Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <p className="text-sm font-medium">{selectedUser.name}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Email</label>
+                  <p className="text-sm font-medium">{selectedUser.email}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Mobile</label>
+                  <p className="text-sm font-medium">{selectedUser.mobile || 'Not provided'}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Role</label>
+                  <Badge variant={selectedUser.role === 'admin' ? 'default' : 'secondary'}>
+                    {selectedUser.role}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Wallet Balance</label>
+                  <p className="text-sm font-medium">${selectedUser.walletBalance?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  {selectedUser.isVerified ? (
+                    <Badge className="bg-accent/10 text-accent">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-destructive/10 text-destructive">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Unverified
+                    </Badge>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Joined</label>
+                  <p className="text-sm font-medium">
+                    {new Date(selectedUser.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Documents */}
+              <div className="space-y-4">
+                <h3 className="font-semibold">Documents</h3>
+                {selectedUser.documents && selectedUser.documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedUser.documents.map((doc: any) => {
+                      const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
+                      return (
+                        <div key={doc.id || doc._id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                              <FileText className="h-5 w-5 text-secondary-foreground" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{doc.name}</p>
+                              <p className="text-sm text-muted-foreground">{doc.type} • {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
+                              <StatusIcon className="h-3 w-3 mr-1" />
+                              {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                            </Badge>
+                            {doc.status === 'pending' && (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id || doc._id, 'reject')}>
+                                  Reject
+                                </Button>
+                                <Button size="sm" onClick={() => handleDocumentAction(doc.id || doc._id, 'approve')}>
+                                  Approve
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No documents uploaded</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              {!selectedUser.isVerified && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsUserDialogOpen(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => handleVerifyUser(selectedUser.id)}>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Verify User
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
