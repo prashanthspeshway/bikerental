@@ -51,19 +51,29 @@ export default function Auth() {
     setIsLoading(true);
     try {
       if (isLogin) {
-        await authAPI.login(formData.email, formData.password);
+        const data = await authAPI.login(formData.email, formData.password);
         toast({
           title: "Success",
           description: "Logged in successfully!",
         });
-        navigate('/dashboard');
+        // Redirect admin users to admin panel
+        if (data.user?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
-        await authAPI.register(formData.email, formData.password, formData.name);
+        const data = await authAPI.register(formData.email, formData.password, formData.name);
         toast({
           title: "Success",
           description: "Account created successfully! Welcome bonus of $10 added to your wallet.",
         });
-        navigate('/dashboard');
+        // Redirect admin users to admin panel
+        if (data.user?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (error: any) {
       toast({
