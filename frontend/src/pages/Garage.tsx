@@ -33,7 +33,8 @@ export default function Garage() {
   const loadBikes = async () => {
     try {
       setIsLoading(true);
-      const data = await bikesAPI.getAll();
+      const selectedLocation = localStorage.getItem('selectedLocation');
+      const data = await bikesAPI.getAll(selectedLocation || undefined);
       setBikes(data);
     } catch (error: any) {
       toast({

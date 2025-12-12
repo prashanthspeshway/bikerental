@@ -6,10 +6,15 @@ import { transformBike } from '../utils/transform.js';
 
 const router = express.Router();
 
-// Get all bikes
+// Get all bikes (optionally filter by location)
 router.get('/', async (req, res) => {
   try {
-    const bikes = await Bike.find();
+    const { locationId } = req.query;
+    let query = {};
+    if (locationId) {
+      query.locationId = locationId;
+    }
+    const bikes = await Bike.find(query).populate('locationId', 'name city state');
     // Transform _id to id for frontend compatibility
     const transformedBikes = bikes.map(transformBike);
     res.json(transformedBikes);

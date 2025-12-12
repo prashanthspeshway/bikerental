@@ -19,9 +19,10 @@ import {
   Plus,
   Edit,
   Trash2,
+  MapPin,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { bikesAPI, usersAPI, documentsAPI, authAPI, getCurrentUser } from '@/lib/api';
+import { bikesAPI, usersAPI, documentsAPI, authAPI, getCurrentUser, locationsAPI } from '@/lib/api';
 import { Bike as BikeType } from '@/types';
 
 const statusStyles = {
@@ -64,14 +65,16 @@ export default function Admin() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [bikesData, usersData, docsData] = await Promise.all([
+      const [bikesData, usersData, docsData, locationsData] = await Promise.all([
         bikesAPI.getAll(),
         usersAPI.getAll(),
         documentsAPI.getAll().catch(() => []),
+        locationsAPI.getAll().catch(() => []),
       ]);
       setBikes(bikesData);
       setUsers(usersData);
       setDocuments(docsData);
+      setLocations(locationsData);
     } catch (error: any) {
       toast({
         title: "Error",

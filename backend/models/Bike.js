@@ -8,7 +8,12 @@ const bikeSchema = new mongoose.Schema({
   kmLimit: { type: Number, required: true },
   available: { type: Boolean, default: true },
   description: { type: String, default: '' },
-  features: [{ type: String }]
+  features: [{ type: String }],
+  locationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Location',
+    required: true,
+  },
 }, { timestamps: true });
 
 export default mongoose.model('Bike', bikeSchema);

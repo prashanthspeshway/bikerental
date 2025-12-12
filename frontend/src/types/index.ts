@@ -8,6 +8,21 @@ export interface Bike {
   available: boolean;
   description: string;
   features: string[];
+  locationId: string;
+  location?: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+  };
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  country: string;
 }
 
 export interface User {

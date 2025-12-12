@@ -7,6 +7,7 @@ import bikeRoutes from './routes/bikes.js';
 import rentalRoutes from './routes/rentals.js';
 import userRoutes from './routes/users.js';
 import documentRoutes from './routes/documents.js';
+import locationRoutes from './routes/locations.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/bikes', bikeRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/locations', locationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -48,4 +50,3 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Backend server running on http://localhost:${PORT}`);
 });
-

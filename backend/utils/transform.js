@@ -11,7 +11,14 @@ export function transformBike(bike) {
     kmLimit: bikeObj.kmLimit,
     available: bikeObj.available,
     description: bikeObj.description,
-    features: bikeObj.features
+    features: bikeObj.features,
+    locationId: bikeObj.locationId?._id?.toString() || bikeObj.locationId?.toString() || bikeObj.locationId,
+    location: bikeObj.locationId && typeof bikeObj.locationId === 'object' ? {
+      id: bikeObj.locationId._id?.toString(),
+      name: bikeObj.locationId.name,
+      city: bikeObj.locationId.city,
+      state: bikeObj.locationId.state,
+    } : null
   };
 }
 

@@ -155,3 +155,20 @@ export const documentsAPI = {
   }),
 };
 
+// Locations API
+export const locationsAPI = {
+  getAll: () => apiRequest<any[]>('/locations'),
+  getById: (id: string) => apiRequest<any>(`/locations/${id}`),
+  create: (location: any) => apiRequest<any>('/locations', {
+    method: 'POST',
+    body: JSON.stringify(location),
+  }),
+  update: (id: string, location: any) => apiRequest<any>(`/locations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(location),
+  }),
+  delete: (id: string) => apiRequest<void>(`/locations/${id}`, {
+    method: 'DELETE',
+  }),
+};
+

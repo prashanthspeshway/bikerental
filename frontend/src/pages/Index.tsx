@@ -41,7 +41,8 @@ export default function Index() {
 
   const loadBikes = async () => {
     try {
-      const data = await bikesAPI.getAll();
+      const selectedLocation = localStorage.getItem('selectedLocation');
+      const data = await bikesAPI.getAll(selectedLocation || undefined);
       setBikes(data);
     } catch (error) {
       console.error('Failed to load bikes:', error);

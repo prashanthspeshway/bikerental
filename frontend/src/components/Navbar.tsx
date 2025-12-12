@@ -1,19 +1,69 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Bike, User, Menu, X, LogOut } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Bike, User, Menu, X, LogOut, Wallet, MapPin } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getCurrentUser, authAPI } from '@/lib/api';
+import { getCurrentUser, authAPI, locationsAPI } from '@/lib/api';
+import { Location } from '@/types';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const currentUser = getCurrentUser();
     setUser(currentUser);
+    
+    // Load locations
+    loadLocations();
+    
+    // Get selected location from localStorage
+    const savedLocation = localStorage.getItem('selectedLocation');
+    if (savedLocation) {
+      setSelectedLocation(savedLocation);
+    }
   }, [location]);
+
+  const loadLocations = async () => {
+    try {
+      const data = await locationsAPI.getAll();
+      setLocations(data);
+      
+      // If no location selected and locations exist, select first one
+      if (!selectedLocation && data.length > 0) {
+        const firstLocation = data[0].id;
+        setSelectedLocation(firstLocation);
+        localStorage.setItem('selectedLocation', firstLocation);
+      }
+    } catch (error) {
+      console.error('Failed to load locations:', error);
+    }
+  };
+
+  const handleLocationChange = (locationId: string) => {
+    setSelectedLocation(locationId);
+    localStorage.setItem('selectedLocation', locationId);
+    // Reload page to show bikes for new location
+    window.location.reload();
+  };
 
   const handleLogout = () => {
     authAPI.logout();
@@ -28,6 +78,8 @@ export function Navbar() {
     { path: '/garage', label: 'Garage' },
     { path: '/dashboard', label: 'Dashboard' },
   ];
+
+  const selectedLocationData = locations.find(loc => loc.id === selectedLocation);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -58,8 +110,27 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Location Selector & Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Location Selector */}
+            {locations.length > 0 && (
+              <Select value={selectedLocation} onValueChange={handleLocationChange}>
+                <SelectTrigger className="w-[150px]">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Select location">
+                    {selectedLocationData?.name || 'Select location'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             {user ? (
               <>
                 {user.role === 'admin' && (
@@ -69,16 +140,40 @@ export function Navbar() {
                     </Button>
                   </Link>
                 )}
-                <Link to="/dashboard">
-                  <Button variant="ghost" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    {user.name}
-                  </Button>
-                </Link>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="hidden sm:inline">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="flex items-center cursor-pointer">
+                        <User className="h-4 w-4 mr-2" />
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center">
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Wallet: ${user.walletBalance?.toFixed(2) || '0.00'}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>
@@ -114,6 +209,25 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-4">
+              {/* Location Selector for Mobile */}
+              {locations.length > 0 && (
+                <Select value={selectedLocation} onValueChange={handleLocationChange}>
+                  <SelectTrigger className="w-full">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Select location">
+                      {selectedLocationData?.name || 'Select location'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
