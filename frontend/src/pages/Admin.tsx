@@ -53,7 +53,9 @@ export default function Admin() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedDocumentUser, setSelectedDocumentUser] = useState<any>(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -399,46 +401,88 @@ export default function Admin() {
               <p className="text-muted-foreground">Review and approve user-submitted documents.</p>
             </div>
 
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="space-y-4">
-                {documents.length > 0 ? (
-                  documents.map((doc) => {
-                    const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
-                    return (
-                      <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+            <div className="grid gap-4">
+              {users.length > 0 ? (
+                users.map((user) => {
+                  const userDocs = documents.filter(doc => doc.userId === user.id);
+                  if (userDocs.length === 0) return null;
+                  
+                  const pendingCount = userDocs.filter(d => d.status === 'pending').length;
+                  const approvedCount = userDocs.filter(d => d.status === 'approved').length;
+                  const rejectedCount = userDocs.filter(d => d.status === 'rejected').length;
+                  
+                  return (
+                    <div key={user.id} className="bg-card rounded-2xl shadow-card p-6">
+                      <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
-                            <FileText className="h-6 w-6 text-secondary-foreground" />
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Users className="h-6 w-6 text-primary" />
                           </div>
                           <div>
-                            <p className="font-medium">{doc.name}</p>
-                            <p className="text-sm text-muted-foreground">{doc.type}</p>
-                            <p className="text-xs text-muted-foreground">Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                            <p className="font-semibold text-lg">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            {user.mobile && (
+                              <p className="text-sm text-muted-foreground">{user.mobile}</p>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
-                          </Badge>
-                          {doc.status === 'pending' && (
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
-                                Reject
-                              </Button>
-                              <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
-                                Approve
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewUserDocuments(user.id)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Documents
+                        </Button>
                       </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">No documents found</p>
-                )}
-              </div>
+                      
+                      <div className="flex gap-4 mb-4">
+                        <Badge variant="outline" className="bg-primary/10">
+                          Total: {userDocs.length}
+                        </Badge>
+                        {pendingCount > 0 && (
+                          <Badge className="bg-primary/10 text-primary">
+                            Pending: {pendingCount}
+                          </Badge>
+                        )}
+                        {approvedCount > 0 && (
+                          <Badge className="bg-accent/10 text-accent">
+                            Approved: {approvedCount}
+                          </Badge>
+                        )}
+                        {rejectedCount > 0 && (
+                          <Badge className="bg-destructive/10 text-destructive">
+                            Rejected: {rejectedCount}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {userDocs.map((doc) => {
+                          const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
+                          return (
+                            <div key={doc.id} className="border rounded-lg p-3 bg-muted/30">
+                              <div className="flex items-center justify-between mb-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color} variant="outline">
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {doc.status}
+                                </Badge>
+                              </div>
+                              <p className="text-xs font-medium mb-1">{doc.type.replace('_', ' ')}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(doc.uploadedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }).filter(Boolean)
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No users with documents found</p>
+              )}
             </div>
           </div>
         )}
