@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,46 +16,13 @@ import {
   LogOut,
   LayoutDashboard,
   DollarSign,
+  Plus,
+  Edit,
+  Trash2,
 } from 'lucide-react';
-import { bikes } from '@/data/bikes';
 import { toast } from '@/hooks/use-toast';
-
-// Mock data
-const mockUsers = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    walletBalance: 75.5,
-    documentsCount: 2,
-    status: 'verified',
-    joinedAt: '2024-01-10',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    walletBalance: 120.0,
-    documentsCount: 3,
-    status: 'pending',
-    joinedAt: '2024-01-15',
-  },
-  {
-    id: '3',
-    name: 'Bob Wilson',
-    email: 'bob@example.com',
-    walletBalance: 0,
-    documentsCount: 1,
-    status: 'unverified',
-    joinedAt: '2024-01-20',
-  },
-];
-
-const mockDocuments = [
-  { id: '1', userName: 'John Doe', docName: 'Driving License', type: 'license', status: 'approved', uploadedAt: '2024-01-15' },
-  { id: '2', userName: 'Jane Smith', docName: 'ID Card', type: 'id', status: 'pending', uploadedAt: '2024-01-18' },
-  { id: '3', userName: 'Bob Wilson', docName: 'Passport', type: 'id', status: 'pending', uploadedAt: '2024-01-20' },
-];
+import { bikesAPI, usersAPI, documentsAPI, authAPI, getCurrentUser } from '@/lib/api';
+import { Bike as BikeType } from '@/types';
 
 const statusStyles = {
   verified: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
@@ -66,14 +33,77 @@ const statusStyles = {
 };
 
 export default function Admin() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [bikes, setBikes] = useState<BikeType[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const handleDocumentAction = (docId: string, action: 'approve' | 'reject') => {
-    toast({
-      title: action === 'approve' ? 'Document Approved' : 'Document Rejected',
-      description: 'This action requires backend setup. Connect Supabase to enable.',
-    });
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (user.role !== 'admin') {
+      toast({
+        title: "Access Denied",
+        description: "Admin access required",
+        variant: "destructive",
+      });
+      navigate('/dashboard');
+      return;
+    }
+    setCurrentUser(user);
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [bikesData, usersData, docsData] = await Promise.all([
+        bikesAPI.getAll(),
+        usersAPI.getAll(),
+        documentsAPI.getAll().catch(() => []),
+      ]);
+      setBikes(bikesData);
+      setUsers(usersData);
+      setDocuments(docsData);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    authAPI.logout();
+    navigate('/');
+  };
+
+  const handleDocumentAction = async (docId: string, action: 'approve' | 'reject') => {
+    try {
+      const status = action === 'approve' ? 'approved' : 'rejected';
+      await documentsAPI.updateStatus(docId, status);
+      toast({
+        title: `Document ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+        description: 'Document status updated successfully.',
+      });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update document",
+        variant: "destructive",
+      });
+    }
   };
 
   const tabs = [
@@ -86,10 +116,26 @@ export default function Admin() {
 
   const stats = [
     { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero' },
-    { label: 'Active Users', value: mockUsers.length, icon: Users, color: 'bg-accent' },
-    { label: 'Pending Docs', value: mockDocuments.filter(d => d.status === 'pending').length, icon: FileText, color: 'bg-secondary' },
-    { label: 'Revenue', value: '$1,250', icon: DollarSign, color: 'gradient-hero' },
+    { label: 'Active Users', value: users.length, icon: Users, color: 'bg-accent' },
+    { label: 'Pending Docs', value: documents.filter(d => d.status === 'pending').length, icon: FileText, color: 'bg-secondary' },
+    { label: 'Total Revenue', value: '$0', icon: DollarSign, color: 'gradient-hero' },
   ];
+
+  const filteredUsers = users.filter(user =>
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading admin panel...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -124,13 +170,17 @@ export default function Admin() {
           ))}
         </nav>
 
-        {/* Logout */}
-        <Link to="/">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
+        {/* User Info & Logout */}
+        <div className="space-y-2 pt-4 border-t border-border">
+          <div className="px-4 py-2 text-sm">
+            <p className="font-medium">{currentUser?.name}</p>
+            <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+          </div>
+          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
-            Back to Site
+            Logout
           </Button>
-        </Link>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -164,27 +214,31 @@ export default function Admin() {
             <div className="bg-card rounded-2xl shadow-card p-6">
               <h3 className="font-display font-semibold text-lg mb-4">Pending Documents</h3>
               <div className="space-y-4">
-                {mockDocuments.filter(d => d.status === 'pending').map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-secondary-foreground" />
+                {documents.filter(d => d.status === 'pending').length > 0 ? (
+                  documents.filter(d => d.status === 'pending').map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-secondary-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{doc.name}</p>
+                          <p className="text-sm text-muted-foreground">{doc.type} • {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{doc.docName}</p>
-                        <p className="text-sm text-muted-foreground">{doc.userName} • {doc.uploadedAt}</p>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No pending documents</p>
+                )}
               </div>
             </div>
           </div>
@@ -199,7 +253,7 @@ export default function Admin() {
                 <p className="text-muted-foreground">Add, edit, or remove bikes from your fleet.</p>
               </div>
               <Button>
-                <Bike className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2" />
                 Add Bike
               </Button>
             </div>
@@ -229,9 +283,14 @@ export default function Admin() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -264,16 +323,19 @@ export default function Admin() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left px-6 py-4 font-medium">User</th>
+                    <th className="text-left px-6 py-4 font-medium">Role</th>
                     <th className="text-left px-6 py-4 font-medium">Wallet</th>
                     <th className="text-left px-6 py-4 font-medium">Documents</th>
-                    <th className="text-left px-6 py-4 font-medium">Status</th>
                     <th className="text-left px-6 py-4 font-medium">Joined</th>
                     <th className="text-left px-6 py-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {mockUsers.map((user) => {
-                    const StatusIcon = statusStyles[user.status as keyof typeof statusStyles].icon;
+                  {filteredUsers.map((user) => {
+                    const docCount = user.documents?.length || 0;
+                    const hasApprovedDocs = user.documents?.some((d: any) => d.status === 'approved');
+                    const status = hasApprovedDocs ? 'verified' : docCount > 0 ? 'pending' : 'unverified';
+                    const StatusIcon = statusStyles[status as keyof typeof statusStyles].icon;
                     return (
                       <tr key={user.id} className="hover:bg-muted/30">
                         <td className="px-6 py-4">
@@ -282,15 +344,22 @@ export default function Admin() {
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-4">${user.walletBalance.toFixed(2)}</td>
-                        <td className="px-6 py-4">{user.documentsCount}</td>
                         <td className="px-6 py-4">
-                          <Badge className={statusStyles[user.status as keyof typeof statusStyles].color}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                            {user.role}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 text-muted-foreground">{user.joinedAt}</td>
+                        <td className="px-6 py-4">${user.walletBalance?.toFixed(2) || '0.00'}</td>
+                        <td className="px-6 py-4">{docCount}</td>
+                        <td className="px-6 py-4">
+                          <Badge className={statusStyles[status as keyof typeof statusStyles].color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </td>
                         <td className="px-6 py-4">
                           <Button variant="ghost" size="sm">
                             <Eye className="h-4 w-4" />
@@ -315,39 +384,43 @@ export default function Admin() {
 
             <div className="bg-card rounded-2xl shadow-card p-6">
               <div className="space-y-4">
-                {mockDocuments.map((doc) => {
-                  const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
-                  return (
-                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
-                          <FileText className="h-6 w-6 text-secondary-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{doc.docName}</p>
-                          <p className="text-sm text-muted-foreground">{doc.userName} • {doc.type}</p>
-                          <p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
-                        </Badge>
-                        {doc.status === 'pending' && (
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
-                              Reject
-                            </Button>
-                            <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
-                              Approve
-                            </Button>
+                {documents.length > 0 ? (
+                  documents.map((doc) => {
+                    const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+                            <FileText className="h-6 w-6 text-secondary-foreground" />
                           </div>
-                        )}
+                          <div>
+                            <p className="font-medium">{doc.name}</p>
+                            <p className="text-sm text-muted-foreground">{doc.type}</p>
+                            <p className="text-xs text-muted-foreground">Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                          </Badge>
+                          {doc.status === 'pending' && (
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
+                                Reject
+                              </Button>
+                              <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
+                                Approve
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No documents found</p>
+                )}
               </div>
             </div>
           </div>
@@ -363,7 +436,7 @@ export default function Admin() {
 
             <div className="bg-card rounded-2xl shadow-card p-6">
               <p className="text-muted-foreground text-center py-8">
-                Settings panel requires backend setup. Connect Supabase to enable.
+                Settings panel coming soon.
               </p>
             </div>
           </div>
