@@ -29,8 +29,10 @@ export function transformUser(user) {
     id: userObj._id?.toString() || userObj.id,
     email: userObj.email,
     name: userObj.name,
+    mobile: userObj.mobile || '',
     role: userObj.role,
     walletBalance: userObj.walletBalance,
+    isVerified: userObj.isVerified || false,
     documents: userObj.documents || [],
     createdAt: userObj.createdAt
   };

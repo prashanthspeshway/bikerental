@@ -13,8 +13,10 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   name: { type: String, required: true },
   password: { type: String, required: true },
+  mobile: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   walletBalance: { type: Number, default: 10 },
+  isVerified: { type: Boolean, default: false },
   documents: [documentSchema],
   createdAt: { type: Date, default: Date.now }
 });

@@ -36,6 +36,17 @@ export default function Dashboard() {
   const [rentals, setRentals] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    name: '',
+    mobile: '',
+    email: '',
+  });
+  const [documentFiles, setDocumentFiles] = useState({
+    aadharFront: null as File | null,
+    aadharBack: null as File | null,
+    pan: null as File | null,
+    drivingLicense: null as File | null,
+  });
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -55,6 +66,11 @@ export default function Dashboard() {
       // Load user data
       const userData = await authAPI.getCurrentUser();
       setUser(userData);
+      setFormData({
+        name: userData.name || '',
+        mobile: userData.mobile || '',
+        email: userData.email || '',
+      });
 
       // Load rentals
       try {
@@ -115,16 +131,42 @@ export default function Dashboard() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (type: 'aadharFront' | 'aadharBack' | 'pan' | 'drivingLicense', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (file) {
+      setDocumentFiles(prev => ({ ...prev, [type]: file }));
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+
+    try {
+      await usersAPI.update(user.id, {
+        name: formData.name,
+        mobile: formData.mobile,
+      });
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      loadUserData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDocumentUpload = async (type: 'aadhar_front' | 'aadhar_back' | 'pan' | 'driving_license', file: File) => {
     if (!file || !user) return;
 
-    // In a real app, you'd upload the file to a storage service first
-    // For now, we'll just create a document entry
     try {
       const doc = await documentsAPI.upload(
         file.name,
-        file.type.includes('pdf') ? 'license' : 'id',
+        type,
         URL.createObjectURL(file)
       );
       setDocuments([...documents, doc]);
@@ -132,6 +174,9 @@ export default function Dashboard() {
         title: "Success",
         description: "Document uploaded successfully. Pending admin approval.",
       });
+      // Clear the file input
+      setDocumentFiles(prev => ({ ...prev, [type === 'aadhar_front' ? 'aadharFront' : type === 'aadhar_back' ? 'aadharBack' : type === 'pan' ? 'pan' : 'drivingLicense']: null }));
+      loadUserData();
     } catch (error: any) {
       toast({
         title: "Error",

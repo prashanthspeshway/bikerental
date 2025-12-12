@@ -20,10 +20,21 @@ import {
   Edit,
   Trash2,
   MapPin,
+  Shield,
+  Mail,
+  Phone,
+  Calendar,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { bikesAPI, usersAPI, documentsAPI, authAPI, getCurrentUser, locationsAPI } from '@/lib/api';
 import { Bike as BikeType } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const statusStyles = {
   verified: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
@@ -40,6 +51,9 @@ export default function Admin() {
   const [bikes, setBikes] = useState<BikeType[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -364,7 +378,7 @@ export default function Admin() {
                           {new Date(user.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewUser(user.id)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                         </td>
