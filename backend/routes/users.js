@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
+import { transformUser } from '../utils/transform.js';
 
 const router = express.Router();
 
@@ -14,7 +15,9 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     const users = await User.find().select('-password');
-    res.json(users);
+    // Transform _id to id for frontend compatibility
+    const transformedUsers = users.map(transformUser);
+    res.json(transformedUsers);
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Error fetching users' });
@@ -35,7 +38,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    res.json(targetUser.toJSON());
+    // Transform _id to id for frontend compatibility
+    res.json(transformUser(targetUser));
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Error fetching user' });
@@ -69,7 +73,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     await user.save();
-    res.json(user.toJSON());
+    // Transform _id to id for frontend compatibility
+    res.json(transformUser(user));
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ message: 'Error updating user' });
@@ -99,7 +104,8 @@ router.post('/:id/wallet/topup', authenticateToken, async (req, res) => {
     user.walletBalance += parseFloat(amount);
     await user.save();
 
-    res.json(user.toJSON());
+    // Transform _id to id for frontend compatibility
+    res.json(transformUser(user));
   } catch (error) {
     console.error('Top up error:', error);
     res.status(500).json({ message: 'Error topping up wallet' });

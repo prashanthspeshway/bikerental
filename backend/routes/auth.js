@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { transformUser } from '../utils/transform.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -41,7 +42,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       message: 'User created successfully',
-      user: newUser.toJSON(),
+      user: transformUser(newUser),
       token
     });
   } catch (error) {
@@ -79,7 +80,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       message: 'Login successful',
-      user: user.toJSON(),
+      user: transformUser(user),
       token
     });
   } catch (error) {
@@ -95,7 +96,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user.toJSON());
+    res.json(transformUser(user));
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Error fetching user' });

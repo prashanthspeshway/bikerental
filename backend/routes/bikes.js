@@ -2,6 +2,7 @@ import express from 'express';
 import Bike from '../models/Bike.js';
 import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
+import { transformBike } from '../utils/transform.js';
 
 const router = express.Router();
 
@@ -9,7 +10,9 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const bikes = await Bike.find();
-    res.json(bikes);
+    // Transform _id to id for frontend compatibility
+    const transformedBikes = bikes.map(transformBike);
+    res.json(transformedBikes);
   } catch (error) {
     console.error('Get bikes error:', error);
     res.status(500).json({ message: 'Error fetching bikes' });
@@ -23,7 +26,18 @@ router.get('/:id', async (req, res) => {
     if (!bike) {
       return res.status(404).json({ message: 'Bike not found' });
     }
-    res.json(bike);
+    // Transform _id to id for frontend compatibility
+    res.json({
+      id: bike._id.toString(),
+      name: bike.name,
+      type: bike.type,
+      image: bike.image,
+      pricePerHour: bike.pricePerHour,
+      kmLimit: bike.kmLimit,
+      available: bike.available,
+      description: bike.description,
+      features: bike.features
+    });
   } catch (error) {
     console.error('Get bike error:', error);
     res.status(500).json({ message: 'Error fetching bike' });
@@ -56,7 +70,8 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     await newBike.save();
-    res.status(201).json(newBike);
+    // Transform _id to id for frontend compatibility
+    res.status(201).json(transformBike(newBike));
   } catch (error) {
     console.error('Create bike error:', error);
     res.status(500).json({ message: 'Error creating bike' });
@@ -81,7 +96,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Bike not found' });
     }
 
-    res.json(bike);
+    // Transform _id to id for frontend compatibility
+    res.json({
+      id: bike._id.toString(),
+      name: bike.name,
+      type: bike.type,
+      image: bike.image,
+      pricePerHour: bike.pricePerHour,
+      kmLimit: bike.kmLimit,
+      available: bike.available,
+      description: bike.description,
+      features: bike.features
+    });
   } catch (error) {
     console.error('Update bike error:', error);
     res.status(500).json({ message: 'Error updating bike' });

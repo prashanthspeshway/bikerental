@@ -3,6 +3,7 @@ import { authenticateToken } from './auth.js';
 import Rental from '../models/Rental.js';
 import Bike from '../models/Bike.js';
 import User from '../models/User.js';
+import { transformRental } from '../utils/transform.js';
 
 const router = express.Router();
 
@@ -21,7 +22,9 @@ router.get('/', authenticateToken, async (req, res) => {
       .populate('userId', 'name email')
       .sort({ createdAt: -1 });
 
-    res.json(rentals);
+    // Transform _id to id for frontend compatibility
+    const transformedRentals = rentals.map(transformRental);
+    res.json(transformedRentals);
   } catch (error) {
     console.error('Get rentals error:', error);
     res.status(500).json({ message: 'Error fetching rentals' });
@@ -44,7 +47,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    res.json(rental);
+    // Transform _id to id for frontend compatibility
+    res.json(transformRental(rental));
   } catch (error) {
     console.error('Get rental error:', error);
     res.status(500).json({ message: 'Error fetching rental' });
@@ -99,7 +103,8 @@ router.post('/', authenticateToken, async (req, res) => {
     bike.available = false;
     await bike.save();
 
-    res.status(201).json(newRental);
+    // Transform _id to id for frontend compatibility
+    res.status(201).json(transformRental(newRental));
   } catch (error) {
     console.error('Create rental error:', error);
     res.status(500).json({ message: 'Error creating rental' });
