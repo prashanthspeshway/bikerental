@@ -1,16 +1,17 @@
 // Helper function to transform MongoDB document _id to id
 export function transformBike(bike) {
   if (!bike) return null;
+  const bikeObj = bike.toObject ? bike.toObject() : bike;
   return {
-    id: bike._id?.toString() || bike.id,
-    name: bike.name,
-    type: bike.type,
-    image: bike.image,
-    pricePerHour: bike.pricePerHour,
-    kmLimit: bike.kmLimit,
-    available: bike.available,
-    description: bike.description,
-    features: bike.features
+    id: bikeObj._id?.toString() || bikeObj.id,
+    name: bikeObj.name,
+    type: bikeObj.type,
+    image: bikeObj.image,
+    pricePerHour: bikeObj.pricePerHour,
+    kmLimit: bikeObj.kmLimit,
+    available: bikeObj.available,
+    description: bikeObj.description,
+    features: bikeObj.features
   };
 }
 
@@ -31,16 +32,46 @@ export function transformUser(user) {
 export function transformRental(rental) {
   if (!rental) return null;
   const rentalObj = rental.toObject ? rental.toObject() : rental;
+  
+  // Handle populated bikeId and userId
+  let bikeId = rentalObj.bikeId;
+  let userId = rentalObj.userId;
+  let bike = null;
+  let user = null;
+  
+  // Extract bikeId - could be ObjectId, populated object, or string
+  if (bikeId && typeof bikeId === 'object' && bikeId._id) {
+    // Populated bike object
+    bike = transformBike(bikeId);
+    bikeId = bikeId._id.toString();
+  } else if (bikeId && typeof bikeId === 'object') {
+    // Mongoose ObjectId
+    bikeId = bikeId.toString();
+  } else {
+    bikeId = bikeId?.toString() || bikeId;
+  }
+  
+  // Extract userId - could be ObjectId, populated object, or string
+  if (userId && typeof userId === 'object' && userId._id) {
+    // Populated user object
+    user = transformUser(userId);
+    userId = userId._id.toString();
+  } else if (userId && typeof userId === 'object') {
+    // Mongoose ObjectId
+    userId = userId.toString();
+  } else {
+    userId = userId?.toString() || userId;
+  }
+  
   return {
     id: rentalObj._id?.toString() || rentalObj.id,
-    bikeId: rentalObj.bikeId?._id?.toString() || rentalObj.bikeId?.toString() || rentalObj.bikeId,
-    userId: rentalObj.userId?._id?.toString() || rentalObj.userId?.toString() || rentalObj.userId,
+    bikeId: bikeId,
+    userId: userId,
     startTime: rentalObj.startTime,
     endTime: rentalObj.endTime,
     totalCost: rentalObj.totalCost,
     status: rentalObj.status,
-    bike: rentalObj.bikeId && typeof rentalObj.bikeId === 'object' ? transformBike(rentalObj.bikeId) : null,
-    user: rentalObj.userId && typeof rentalObj.userId === 'object' ? transformUser(rentalObj.userId) : null
+    bike: bike,
+    user: user
   };
 }
-
