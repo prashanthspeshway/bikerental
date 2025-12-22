@@ -21,7 +21,7 @@ const bikesByLocation = {
     },
     {
       name: 'Sand Storm MTB',
-      type: 'mountain',
+      type: 'fuel',
       image: '/bikes/mountain-1.jpg',
       pricePerHour: 15,
       kmLimit: 30,
@@ -31,7 +31,7 @@ const bikesByLocation = {
     },
     {
       name: 'City Explorer',
-      type: 'city',
+      type: 'scooter',
       image: '/bikes/city-1.jpg',
       pricePerHour: 10,
       kmLimit: 25,
@@ -53,7 +53,7 @@ const bikesByLocation = {
     },
     {
       name: 'Coastal Cruiser',
-      type: 'city',
+      type: 'scooter',
       image: '/bikes/city-2.jpg',
       pricePerHour: 12,
       kmLimit: 30,
@@ -63,7 +63,7 @@ const bikesByLocation = {
     },
     {
       name: 'Goa Sport Bike',
-      type: 'sport',
+      type: 'fuel',
       image: '/bikes/sport-1.jpg',
       pricePerHour: 25,
       kmLimit: 50,
@@ -85,7 +85,7 @@ const bikesByLocation = {
     },
     {
       name: 'Himalayan Trail MTB',
-      type: 'mountain',
+      type: 'fuel',
       image: '/bikes/mountain-1.jpg',
       pricePerHour: 18,
       kmLimit: 35,
@@ -107,7 +107,7 @@ const bikesByLocation = {
     },
     {
       name: 'Yoga City Bike',
-      type: 'city',
+      type: 'scooter',
       image: '/bikes/city-1.jpg',
       pricePerHour: 10,
       kmLimit: 25,
@@ -129,7 +129,7 @@ const bikesByLocation = {
     },
     {
       name: 'Urban Explorer',
-      type: 'city',
+      type: 'scooter',
       image: '/bikes/city-2.jpg',
       pricePerHour: 8,
       kmLimit: 20,
@@ -139,7 +139,7 @@ const bikesByLocation = {
     },
     {
       name: 'Mumbai Sport',
-      type: 'sport',
+      type: 'fuel',
       image: '/bikes/sport-1.jpg',
       pricePerHour: 20,
       kmLimit: 40,

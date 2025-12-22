@@ -1,8 +1,13 @@
 import express from 'express';
 import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
+import { createPresignedUpload } from '../utils/s3.js';
+import multer from 'multer';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import crypto from 'crypto';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // Get user documents (or all documents if admin)
 router.get('/', authenticateToken, async (req, res) => {
@@ -13,7 +18,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     // If admin, return all documents from all users with user info
-    if (currentUser.role === 'admin') {
+    if (['admin', 'superadmin'].includes(currentUser.role)) {
       const users = await User.find().select('name email documents');
       const allDocuments = [];
       
@@ -46,11 +51,69 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Upload document
+// Generate S3 presigned upload URL
+router.post('/upload-url', authenticateToken, async (req, res) => {
+  try {
+    const { name, type, contentType } = req.body;
+    if (!name || !type || !contentType) {
+      return res.status(400).json({ message: 'Name, type and contentType are required' });
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'image/jpg'];
+    const normalized = contentType === 'image/jpg' ? 'image/jpeg' : contentType;
+    if (!allowedTypes.includes(contentType)) {
+      return res.status(400).json({ message: 'Unsupported content type' });
+    }
+    const { uploadUrl, fileUrl, key } = await createPresignedUpload(req.user.userId, name, normalized);
+    res.json({ uploadUrl, fileUrl, key });
+  } catch (error) {
+    const msg = (error && (error.message || String(error))) || 'Error creating upload URL';
+    console.error('Presign error:', msg);
+    res.status(500).json({ message: msg });
+  }
+});
+
+// Fallback upload endpoint (avoids S3 CORS by uploading via backend)
+router.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    const { name, type } = req.body;
+    const file = req.file;
+    if (!file || !name || !type) {
+      return res.status(400).json({ message: 'file, name and type are required' });
+    }
+    const REGION = process.env.AWS_REGION;
+    const BUCKET = process.env.AWS_S3_BUCKET;
+    const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+    const SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+    if (!REGION || !BUCKET || !ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
+      return res.status(500).json({ message: 'Missing AWS configuration' });
+    }
+    const s3 = new S3Client({
+      region: REGION,
+      credentials: {
+        accessKeyId: ACCESS_KEY_ID,
+        secretAccessKey: SECRET_ACCESS_KEY,
+      },
+    });
+    const ext = (name.split('.').pop() || 'bin').toLowerCase();
+    const key = `documents/${req.user.userId}/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    }));
+    const fileUrl = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
+    res.json({ fileUrl, key });
+  } catch (error) {
+    console.error('Direct upload error:', error?.message || error);
+    res.status(500).json({ message: error?.message || 'Error uploading file' });
+  }
+});
+
+// Save document record
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, type, url } = req.body;
-
     if (!name || !type) {
       return res.status(400).json({ message: 'Name and type are required' });
     }
@@ -89,7 +152,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     }
 
     const currentUser = await User.findById(req.user.userId);
-    if (currentUser.role !== 'admin') {
+    if (!['admin', 'superadmin'].includes(currentUser.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 

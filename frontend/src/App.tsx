@@ -8,7 +8,12 @@ import Garage from "./pages/Garage";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import SuperAdmin from "./pages/SuperAdmin";
 import NotFound from "./pages/NotFound";
+import Tariff from "./pages/Tariff";
+import Payment from "./pages/Payment";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import { getCurrentUser } from "@/lib/api";
 
 const queryClient = new QueryClient();
 
@@ -17,13 +22,25 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/garage" element={<Garage />} />
+          <Route path="/tariff" element={<Tariff />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route
+            path="/dashboard"
+            element={
+              (() => {
+                const user = getCurrentUser();
+                return user?.role === "superadmin" ? <SuperAdmin /> : <Dashboard />;
+              })()
+            }
+          />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/superadmin" element={<SuperAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

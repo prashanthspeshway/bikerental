@@ -13,7 +13,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.userId);
     let query = {};
     
-    if (user.role !== 'admin') {
+    if (!['admin', 'superadmin'].includes(user.role)) {
       query.userId = req.user.userId;
     }
 
@@ -43,7 +43,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     const user = await User.findById(req.user.userId);
-    if (user.role !== 'admin' && rental.userId._id.toString() !== req.user.userId) {
+    if (!['admin', 'superadmin'].includes(user.role) && rental.userId._id.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -98,12 +98,11 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     await newRental.save();
-
-    // Mark bike as unavailable
+    
+    // Update bike availability
     bike.available = false;
     await bike.save();
 
-    // Transform _id to id for frontend compatibility
     res.status(201).json(transformRental(newRental));
   } catch (error) {
     console.error('Create rental error:', error);
@@ -111,85 +110,78 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// End rental
-router.post('/:id/end', authenticateToken, async (req, res) => {
+router.post('/:id/start', authenticateToken, async (req, res) => {
   try {
-    const rental = await Rental.findById(req.params.id).populate('bikeId');
-    if (!rental) {
-      return res.status(404).json({ message: 'Rental not found' });
-    }
+    const rental = await Rental.findById(req.params.id);
+    if (!rental) return res.status(404).json({ message: 'Rental not found' });
+    if (rental.status !== 'confirmed') return res.status(400).json({ message: 'Rental is not confirmed' });
 
-    const user = await User.findById(req.user.userId);
-    if (user.role !== 'admin' && rental.userId.toString() !== req.user.userId) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
-    if (rental.status !== 'active') {
-      return res.status(400).json({ message: 'Rental is not active' });
-    }
-
-    // Calculate cost
-    const startTime = new Date(rental.startTime);
-    const endTime = new Date();
-    const hours = Math.ceil((endTime - startTime) / (1000 * 60 * 60));
-    const totalCost = hours * rental.bikeId.pricePerHour;
-
-    // Update rental
-    rental.endTime = endTime;
-    rental.totalCost = totalCost;
-    rental.status = 'completed';
+    rental.status = 'ongoing';
     await rental.save();
-
-    // Deduct from wallet
-    user.walletBalance -= totalCost;
-    if (user.walletBalance < 0) {
-      user.walletBalance = 0;
-    }
-    await user.save();
-
-    // Mark bike as available
-    rental.bikeId.available = true;
-    await rental.bikeId.save();
-
-    // Transform _id to id for frontend compatibility
-    res.json(transformRental(rental));
+    res.json(rental);
   } catch (error) {
-    console.error('End rental error:', error);
-    res.status(500).json({ message: 'Error ending rental' });
+    res.status(500).json({ message: 'Error starting ride' });
   }
 });
 
-// Cancel rental
+router.post('/:id/complete', authenticateToken, async (req, res) => {
+  try {
+    const rental = await Rental.findById(req.params.id);
+    if (!rental) return res.status(404).json({ message: 'Rental not found' });
+    if (rental.status !== 'ongoing') return res.status(400).json({ message: 'Rental is not ongoing' });
+
+    rental.status = 'completed';
+    await rental.save();
+    
+    const bike = await Bike.findById(rental.bikeId);
+    if (bike) {
+      bike.available = true;
+      await bike.save();
+    }
+
+    res.json(rental);
+  } catch (error) {
+    res.status(500).json({ message: 'Error completing ride' });
+  }
+});
+
 router.post('/:id/cancel', authenticateToken, async (req, res) => {
   try {
-    const rental = await Rental.findById(req.params.id).populate('bikeId');
-    if (!rental) {
-      return res.status(404).json({ message: 'Rental not found' });
-    }
+    const rental = await Rental.findById(req.params.id);
+    if (!rental) return res.status(404).json({ message: 'Rental not found' });
+    if (rental.userId.toString() !== req.user.userId) return res.status(403).json({ message: 'Access denied' });
+    if (rental.status !== 'confirmed') return res.status(400).json({ message: 'Cannot cancel this rental' });
 
-    const user = await User.findById(req.user.userId);
-    if (user.role !== 'admin' && rental.userId.toString() !== req.user.userId) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
-    if (rental.status !== 'active') {
-      return res.status(400).json({ message: 'Rental is not active' });
-    }
-
-    // Update rental
-    rental.endTime = new Date();
     rental.status = 'cancelled';
     await rental.save();
-
-    // Mark bike as available
-    rental.bikeId.available = true;
-    await rental.bikeId.save();
-
-    // Transform _id to id for frontend compatibility
-    res.json(transformRental(rental));
+    res.json({ message: 'Rental cancelled', rental });
   } catch (error) {
-    console.error('Cancel rental error:', error);
     res.status(500).json({ message: 'Error cancelling rental' });
+  }
+});
+
+router.post('/:id/review', authenticateToken, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const rental = await Rental.findById(req.params.id);
+    
+    if (!rental) return res.status(404).json({ message: 'Rental not found' });
+    if (rental.userId.toString() !== req.user.userId) return res.status(403).json({ message: 'Access denied' });
+    if (rental.status !== 'completed') return res.status(400).json({ message: 'Rental must be completed to review' });
+
+    const review = new Review({
+      rentalId: rental._id,
+      userId: req.user.userId,
+      bikeId: rental.bikeId,
+      rating,
+      comment
+    });
+
+    await review.save();
+    res.json(review);
+  } catch (error) {
+    console.error('Review error:', error);
+    res.status(500).json({ message: 'Error submitting review' });
   }
 });
 

@@ -73,11 +73,19 @@ export function Navbar() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const navLinks = [
-    { path: '/', label: 'Home' },
-    { path: '/garage', label: 'Garage' },
-    { path: '/dashboard', label: 'Dashboard' },
-  ];
+  const isSuperAdmin = user?.role === 'superadmin';
+  const navLinks = isSuperAdmin
+    ? [
+        { path: '/', label: 'Home' },
+        { path: '/garage', label: 'Garage' },
+        { path: '/dashboard', label: 'Dashboard' },
+      ]
+    : [
+        { path: '/', label: 'Home' },
+        { path: '/tariff', label: 'Garage' },
+        { path: '/garage', label: 'Ride Finder' },
+        { path: '/dashboard', label: 'Dashboard' },
+      ];
 
   const selectedLocationData = locations.find(loc => loc.id === selectedLocation);
 
@@ -137,6 +145,13 @@ export function Navbar() {
                   <Link to="/admin">
                     <Button variant="ghost" size="sm">
                       Admin
+                    </Button>
+                  </Link>
+                )}
+                {user.role === 'superadmin' && (
+                  <Link to="/superadmin">
+                    <Button variant="ghost" size="sm">
+                      Super Admin
                     </Button>
                   </Link>
                 )}

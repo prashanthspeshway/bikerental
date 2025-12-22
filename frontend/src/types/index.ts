@@ -1,7 +1,8 @@
 export interface Bike {
   id: string;
   name: string;
-  type: 'electric' | 'mountain' | 'city' | 'sport';
+  type: 'fuel' | 'electric' | 'scooter';
+  brand?: string;
   image: string;
   pricePerHour: number;
   kmLimit: number;
@@ -29,7 +30,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'superadmin';
   walletBalance: number;
   documents: Document[];
   createdAt: string;

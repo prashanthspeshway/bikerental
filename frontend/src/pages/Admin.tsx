@@ -24,9 +24,10 @@ import {
   Mail,
   Phone,
   Calendar,
+  Wrench,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { bikesAPI, usersAPI, documentsAPI, authAPI, getCurrentUser, locationsAPI } from '@/lib/api';
+import { bikesAPI, usersAPI, documentsAPI, rentalsAPI, authAPI, getCurrentUser, locationsAPI } from '@/lib/api';
 import { Bike as BikeType } from '@/types';
 import {
   Dialog,
@@ -35,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const statusStyles = {
   verified: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
@@ -52,12 +54,19 @@ export default function Admin() {
   const [users, setUsers] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
+  const [rentals, setRentals] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedDocumentUser, setSelectedDocumentUser] = useState<any>(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'pending'>('all');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+  const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
+  const [editingBike, setEditingBike] = useState<any | null>(null);
+  const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
+  const [brandSearch, setBrandSearch] = useState('');
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -79,18 +88,45 @@ export default function Admin() {
   }, []);
 
   const loadData = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const [bikesData, usersData, docsData, locationsData] = await Promise.all([
-        bikesAPI.getAll(),
-        usersAPI.getAll(),
-        documentsAPI.getAll().catch(() => []),
-        locationsAPI.getAll().catch(() => []),
-      ]);
-      setBikes(bikesData);
-      setUsers(usersData);
-      setDocuments(docsData);
-      setLocations(locationsData);
+      const savedLocation = localStorage.getItem('selectedLocation') || '';
+      setSelectedLocationId(savedLocation);
+      // Fetch bikes (public)
+      try {
+        const bikesData = await bikesAPI.getAll(savedLocation || undefined);
+        setBikes(bikesData);
+      } catch (err) {
+        setBikes([]);
+      }
+      // Fetch rentals (admin/user scoped)
+      try {
+        const rentalsData = await rentalsAPI.getAll();
+        setRentals(rentalsData);
+      } catch {
+        setRentals([]);
+      }
+      // Fetch users (admin)
+      try {
+        const usersData = await usersAPI.getAll();
+        setUsers(usersData);
+      } catch (err: any) {
+        setUsers([]);
+      }
+      // Fetch documents (auth)
+      try {
+        const docsData = await documentsAPI.getAll();
+        setDocuments(docsData);
+      } catch {
+        setDocuments([]);
+      }
+      // Fetch locations (public)
+      try {
+        const locationsData = await locationsAPI.getAll();
+        setLocations(locationsData);
+      } catch {
+        setLocations([]);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -124,26 +160,96 @@ export default function Admin() {
       });
     }
   };
+  
+  const handleViewUser = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedUser(user);
+    setIsUserDialogOpen(true);
+  };
+
+  const handleViewUserDocuments = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedDocumentUser(user);
+    setIsDocumentDialogOpen(true);
+  };
+
+  const handleVerifyUser = async (userId: string) => {
+    try {
+      await usersAPI.update(userId, { isVerified: true });
+      toast({
+        title: "User Verified",
+        description: "User status updated to verified.",
+      });
+      setIsUserDialogOpen(false);
+      setIsDocumentDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to verify user",
+        variant: "destructive",
+      });
+    }
+  };
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'vehicles', label: 'Vehicles', icon: Bike },
     { id: 'bikes', label: 'Bikes', icon: Bike },
+    { id: 'allVehicles', label: 'All Vehicles', icon: Bike },
+    { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
+  const bikesById: Record<string, BikeType> = Object.fromEntries(bikes.map(b => [b.id, b]));
+  const activeRentals = rentals.filter(r => r.status === 'active' && bikesById[r.bikeId]);
+  const activeBikeIds = new Set(activeRentals.map(r => r.bikeId));
+  const availableCount = bikes.filter(b => b.available).length;
+  const inUseCount = activeRentals.length;
+  const maintenanceCount = bikes.filter(b => !b.available && !activeBikeIds.has(b.id)).length;
   const stats = [
     { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero', onClick: () => setActiveTab('bikes') },
-    { label: 'Active Users', value: users.length, icon: Users, color: 'bg-accent', onClick: () => setActiveTab('users') },
-    { label: 'Pending Docs', value: documents.filter(d => d.status === 'pending').length, icon: FileText, color: 'bg-secondary', onClick: () => setActiveTab('documents') },
-    { label: 'Total Revenue', value: '$0', icon: DollarSign, color: 'gradient-hero' },
+    { label: 'Available', value: availableCount, icon: Bike, color: 'bg-accent', onClick: () => setActiveTab('bikes') },
+    { label: 'In Use', value: inUseCount, icon: Bike, color: 'bg-primary', onClick: () => setActiveTab('bookings') },
+    { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary' },
   ];
 
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const rentalsForLocation = rentals.filter(r => bikesById[r.bikeId]);
+  const userIdsForLocation = new Set(rentalsForLocation.map(r => r.userId));
+  const filteredUsers = users
+    .filter(user => userIdsForLocation.has(user.id))
+    .filter(user => {
+      if (userStatusFilter === 'active') return user.isVerified;
+      if (userStatusFilter === 'pending') return !user.isVerified;
+      return true;
+    })
+    .filter(user =>
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  const documentsForLocation = documents.filter(d => userIdsForLocation.has(d.userId));
+  const today = new Date().toISOString().slice(0, 10);
+  const pickupsToday = rentalsForLocation.filter(r => r.startTime?.slice(0, 10) === today).length;
+  const dropoffsToday = rentalsForLocation.filter(r => r.endTime && r.endTime.slice(0, 10) === today).length;
+  const pendingDocsCount = documentsForLocation.filter(d => d.status === 'pending').length;
 
   if (isLoading) {
     return (
@@ -176,7 +282,10 @@ export default function Admin() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                if (tab.id === 'users') setUserStatusFilter('all');
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                 activeTab === tab.id
                   ? 'bg-primary text-primary-foreground'
@@ -209,7 +318,7 @@ export default function Admin() {
           <div className="space-y-8">
             <div>
               <h1 className="text-2xl font-display font-bold mb-2">Dashboard</h1>
-              <p className="text-muted-foreground">Overview of your bike rental business.</p>
+              <p className="text-muted-foreground">Operational overview for your assigned city/garage.</p>
             </div>
 
             {/* Stats */}
@@ -232,6 +341,152 @@ export default function Admin() {
                 </div>
               ))}
             </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="bg-card rounded-2xl shadow-card p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Today’s Pickups</p>
+                    <p className="text-2xl font-display font-bold">{pickupsToday}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl shadow-card p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Today’s Drop-offs</p>
+                    <p className="text-2xl font-display font-bold">{dropoffsToday}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl shadow-card p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <FileText className="h-6 w-6 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending KYC</p>
+                    <p className="text-2xl font-display font-bold">{pendingDocsCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vehicles (Brand Grouping) */}
+        {activeTab === 'vehicles' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-display font-bold mb-2">Vehicles</h1>
+                <p className="text-muted-foreground">Browse vehicles grouped by brand.</p>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingBike(null);
+                  setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: selectedLocationId || '', image: '' });
+                  setBikeDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vehicle
+              </Button>
+            </div>
+            <div className="bg-card rounded-2xl shadow-card p-6">
+              <div className="p-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search brands..." value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)} />
+                </div>
+              </div>
+              {Array.from(new Set(bikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
+                .filter((brand) => brand.toLowerCase().includes(brandSearch.toLowerCase()))
+                .map((brand) => {
+                  const brandBikes = bikes.filter((b) => (((b.brand || '').trim() || 'Unbranded')) === brand);
+                  return (
+                    <div key={brand} className="mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <h2 className="font-display font-semibold text-lg">{brand}</h2>
+                        <Badge variant="secondary">{brandBikes.length} vehicles</Badge>
+                      </div>
+                      {(['fuel','electric','scooter'] as const).map((t) => {
+                        const typeBikes = brandBikes.filter((b) => b.type === t);
+                        if (!typeBikes.length) return null;
+                        const typeLabel = t.charAt(0).toUpperCase() + t.slice(1);
+                        return (
+                          <div key={`${brand}-${t}`} className="mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-display font-medium">{typeLabel}</h3>
+                              <Badge variant="secondary">{typeBikes.length} {typeLabel.toLowerCase()}</Badge>
+                            </div>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {typeBikes.map((bike) => (
+                                <div key={bike.id} className="border rounded-lg p-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <p className="font-medium">{bike.name}</p>
+                                    <Badge variant="secondary">{bike.type}</Badge>
+                                  </div>
+                                  {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {(bike.brand || '').trim() || 'Unbranded'}</p>}
+                                  {bike.image && (
+                                    <img src={bike.image} alt={bike.name} className="w-full h-32 object-cover rounded-md mb-2" />
+                                  )}
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-sm text-muted-foreground">${bike.pricePerHour}/hr</p>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setEditingBike(bike);
+                                          setBikeForm({
+                                            name: bike.name,
+                                            brand: bike.brand || '',
+                                            type: bike.type,
+                                            pricePerHour: String(bike.pricePerHour),
+                                            kmLimit: String(bike.kmLimit),
+                                            locationId: bike.locationId,
+                                            image: bike.image || '',
+                                          });
+                                          setBikeDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="h-3 w-3 mr-1" />
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={async () => {
+                                          try {
+                                            await bikesAPI.delete(bike.id);
+                                            toast({ title: 'Vehicle deleted' });
+                                            loadData();
+                                          } catch (e: any) {
+                                            toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-3 w-3 mr-1" />
+                                        Delete
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         )}
 
@@ -240,13 +495,9 @@ export default function Admin() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-display font-bold mb-2">Manage Bikes</h1>
-                <p className="text-muted-foreground">Add, edit, or remove bikes from your fleet.</p>
+                <h1 className="text-2xl font-display font-bold mb-2">Bike Inventory</h1>
+                <p className="text-muted-foreground">View and update bike status for your city.</p>
               </div>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Bike
-              </Button>
             </div>
 
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
@@ -270,21 +521,240 @@ export default function Admin() {
                       <td className="px-6 py-4">{bike.kmLimit} km</td>
                       <td className="px-6 py-4">
                         <Badge variant={bike.available ? 'default' : 'secondary'} className={bike.available ? 'bg-accent text-accent-foreground' : ''}>
-                          {bike.available ? 'Available' : 'In Use'}
+                          {activeBikeIds.has(bike.id) ? 'In Use' : bike.available ? 'Available' : 'Maintenance'}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {activeBikeIds.has(bike.id) ? (
+                            <Badge className="bg-muted text-muted-foreground">Ride Active</Badge>
+                          ) : bike.available ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await bikesAPI.update(bike.id, { available: false });
+                                    toast({ title: "Marked Maintenance", description: `${bike.name} disabled for booking.` });
+                                    loadData();
+                                  } catch (e: any) {
+                                    toast({ title: "Error", description: e.message || "Failed to update bike", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                <Wrench className="h-4 w-4 mr-2" />
+                                Maintenance
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await bikesAPI.update(bike.id, { available: false });
+                                    toast({ title: "Temporarily Disabled", description: `${bike.name} disabled for booking.` });
+                                    loadData();
+                                  } catch (e: any) {
+                                    toast({ title: "Error", description: e.message || "Failed to update bike", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                Disable
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await bikesAPI.update(bike.id, { available: true });
+                                  toast({ title: "Enabled", description: `${bike.name} is now available.` });
+                                  loadData();
+                                } catch (e: any) {
+                                  toast({ title: "Error", description: e.message || "Failed to update bike", variant: "destructive" });
+                                }
+                              }}
+                            >
+                              Enable
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* All Vehicles */}
+        {activeTab === 'allVehicles' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-display font-bold mb-2">All Vehicles</h1>
+                <p className="text-muted-foreground">Add, edit, or remove vehicles from your fleet.</p>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingBike(null);
+                  setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: selectedLocationId || '', image: '' });
+                  setBikeDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vehicle
+              </Button>
+            </div>
+            <div className="bg-card rounded-2xl shadow-card overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search vehicles..." />
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                {bikes.map((bike) => (
+                  <div key={bike.id} className="border rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-medium">{bike.name}</p>
+                      <Badge variant="secondary">{bike.type}</Badge>
+                    </div>
+                    {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {bike.brand}</p>}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">${bike.pricePerHour}/hr</p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingBike(bike);
+                            setBikeForm({
+                              name: bike.name,
+                              brand: bike.brand || '',
+                              type: bike.type,
+                              pricePerHour: String(bike.pricePerHour),
+                              kmLimit: String(bike.kmLimit),
+                              locationId: bike.locationId,
+                              image: bike.image || '',
+                            });
+                            setBikeDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            try {
+                              await bikesAPI.delete(bike.id);
+                              toast({ title: 'Vehicle deleted' });
+                              loadData();
+                            } catch (e: any) {
+                              toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bookings */}
+        {activeTab === 'bookings' && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-display font-bold mb-2">Bookings</h1>
+              <p className="text-muted-foreground">Manage bookings in your city.</p>
+            </div>
+            <div className="bg-card rounded-2xl shadow-card overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left px-6 py-4 font-medium">Booking</th>
+                    <th className="text-left px-6 py-4 font-medium">Bike</th>
+                    <th className="text-left px-6 py-4 font-medium">User</th>
+                    <th className="text-left px-6 py-4 font-medium">Start</th>
+                    <th className="text-left px-6 py-4 font-medium">End</th>
+                    <th className="text-left px-6 py-4 font-medium">Status</th>
+                    <th className="text-left px-6 py-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {rentalsForLocation.map((r) => {
+                    const bike = bikesById[r.bikeId];
+                    const user = users.find(u => u.id === r.userId);
+                    return (
+                      <tr key={r.id} className="hover:bg-muted/30">
+                        <td className="px-6 py-4 font-medium">#{r.id.slice(0,8)}</td>
+                        <td className="px-6 py-4">{bike?.name || r.bikeId}</td>
+                        <td className="px-6 py-4">{user?.name || r.userId}</td>
+                        <td className="px-6 py-4">{new Date(r.startTime).toLocaleString()}</td>
+                        <td className="px-6 py-4">{r.endTime ? new Date(r.endTime).toLocaleString() : '-'}</td>
+                        <td className="px-6 py-4">
+                          <Badge className={statusStyles[r.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                            {r.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {r.status === 'active' && (
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await rentalsAPI.end(r.id);
+                                    toast({ title: "Ride Ended", description: "Booking closed successfully." });
+                                    loadData();
+                                  } catch (e: any) {
+                                    toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                End Ride
+                              </Button>
+                            )}
+                            {r.status !== 'completed' && r.status !== 'cancelled' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await rentalsAPI.cancel(r.id);
+                                    toast({ title: "Booking Cancelled", description: "Booking cancelled successfully." });
+                                    loadData();
+                                  } catch (e: any) {
+                                    toast({ title: "Error", description: e.message || "Failed to cancel", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm" disabled>
+                              Confirm
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled>
+                              Start Ride
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled>
+                              Extend
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -324,8 +794,7 @@ export default function Admin() {
                 <tbody className="divide-y divide-border">
                   {filteredUsers.map((user) => {
                     const docCount = user.documents?.length || 0;
-                    const hasApprovedDocs = user.documents?.some((d: any) => d.status === 'approved');
-                    const status = hasApprovedDocs ? 'verified' : docCount > 0 ? 'pending' : 'unverified';
+                    const status = user.isVerified ? 'verified' : docCount > 0 ? 'pending' : 'unverified';
                     const StatusIcon = statusStyles[status as keyof typeof statusStyles].icon;
                     return (
                       <tr key={user.id} className="hover:bg-muted/30">
@@ -374,9 +843,9 @@ export default function Admin() {
             </div>
 
             <div className="grid gap-4">
-              {users.length > 0 ? (
-                users.map((user) => {
-                  const userDocs = documents.filter(doc => doc.userId === user.id);
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => {
+                  const userDocs = documentsForLocation.filter(doc => doc.userId === user.id);
                   if (userDocs.length === 0) return null;
                   
                   const pendingCount = userDocs.filter(d => d.status === 'pending').length;
@@ -475,6 +944,97 @@ export default function Admin() {
           </div>
         )}
       </main>
+
+      {/* Vehicle Create/Edit Dialog */}
+      <Dialog open={bikeDialogOpen} onOpenChange={setBikeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingBike ? 'Edit Vehicle' : 'Add Vehicle'}</DialogTitle>
+            <DialogDescription>Enter vehicle details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input placeholder="Name" value={bikeForm.name} onChange={(e) => setBikeForm({ ...bikeForm, name: e.target.value })} />
+            <Input placeholder="Brand" value={bikeForm.brand || ''} onChange={(e) => setBikeForm({ ...bikeForm, brand: e.target.value })} />
+            <Select value={bikeForm.type} onValueChange={(v) => setBikeForm({ ...bikeForm, type: v })}>
+              <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fuel">Fuel</SelectItem>
+                <SelectItem value="electric">Electric</SelectItem>
+                <SelectItem value="scooter">Scooter</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input placeholder="Price Per Hour" value={bikeForm.pricePerHour} onChange={(e) => setBikeForm({ ...bikeForm, pricePerHour: e.target.value })} />
+            <Input placeholder="KM Limit" value={bikeForm.kmLimit} onChange={(e) => setBikeForm({ ...bikeForm, kmLimit: e.target.value })} />
+            <Select value={bikeForm.locationId} onValueChange={(v) => setBikeForm({ ...bikeForm, locationId: v })}>
+              <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
+              <SelectContent>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="space-y-2">
+              <Input placeholder="Image URL" value={bikeForm.image} onChange={(e) => setBikeForm({ ...bikeForm, image: e.target.value })} />
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const res = await documentsAPI.uploadFile(file, file.name, 'bike_image');
+                      if (res?.fileUrl) {
+                        setBikeForm({ ...bikeForm, image: res.fileUrl });
+                        toast({ title: 'Image uploaded', description: 'Vehicle image has been uploaded' });
+                      } else {
+                        toast({ title: 'Upload failed', description: 'No file URL returned', variant: 'destructive' });
+                      }
+                    } catch (err: any) {
+                      toast({ title: 'Upload error', description: err.message || 'Failed to upload image', variant: 'destructive' });
+                    }
+                  }}
+                />
+                {bikeForm.image && (
+                  <img src={bikeForm.image} alt="Preview" className="w-16 h-16 object-cover rounded-md border" />
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={async () => {
+                  try {
+                    const payload = {
+                      name: bikeForm.name,
+                      brand: (bikeForm.brand || '').trim(),
+                      type: bikeForm.type,
+                      pricePerHour: parseFloat(bikeForm.pricePerHour),
+                      kmLimit: parseInt(bikeForm.kmLimit),
+                      locationId: bikeForm.locationId,
+                      image: bikeForm.image,
+                    };
+                    if (editingBike) {
+                      await bikesAPI.update(editingBike.id, payload);
+                      toast({ title: 'Vehicle updated' });
+                    } else {
+                      await bikesAPI.create(payload);
+                      toast({ title: 'Vehicle created' });
+                    }
+                    setBikeDialogOpen(false);
+                    setEditingBike(null);
+                    loadData();
+                  } catch (e: any) {
+                    toast({ title: 'Error', description: e.message || 'Failed to save vehicle', variant: 'destructive' });
+                  }
+                }}
+              >
+                {editingBike ? 'Save' : 'Create'}
+              </Button>
+              <Button variant="outline" onClick={() => setBikeDialogOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* User Details Dialog */}
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>

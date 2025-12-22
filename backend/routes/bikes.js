@@ -3,6 +3,7 @@ import Bike from '../models/Bike.js';
 import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
 import { transformBike } from '../utils/transform.js';
+import Rental from '../models/Rental.js';
 
 const router = express.Router();
 
@@ -21,6 +22,42 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Get bikes error:', error);
     res.status(500).json({ message: 'Error fetching bikes' });
+  }
+});
+
+// Get available bikes for a time window
+router.get('/available', async (req, res) => {
+  try {
+    const { start, end, locationId } = req.query;
+    if (!start || !end) {
+      return res.status(400).json({ message: 'start and end query params are required (ISO dates)' });
+    }
+    const startTime = new Date(start);
+    const endTime = new Date(end);
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime()) || endTime <= startTime) {
+      return res.status(400).json({ message: 'Invalid time range' });
+    }
+
+    // Find rentals overlapping the requested window
+    const overlappingRentals = await Rental.find({
+      status: { $in: ['active', 'completed'] },
+      $or: [
+        { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
+        { status: 'active' }, // active rentals block availability
+      ],
+    }).select('bikeId');
+
+    const occupiedBikeIds = new Set(overlappingRentals.map(r => r.bikeId.toString()));
+
+    const query = {};
+    if (locationId) query.locationId = locationId;
+
+    const bikes = await Bike.find(query).populate('locationId', 'name city state');
+    const available = bikes.filter(b => !occupiedBikeIds.has(b._id.toString()));
+    res.json(available.map(transformBike));
+  } catch (error) {
+    console.error('Get available bikes error:', error);
+    res.status(500).json({ message: 'Error fetching available bikes' });
   }
 });
 
@@ -43,25 +80,27 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const { name, type, image, pricePerHour, kmLimit, description, features } = req.body;
+    const { name, type, brand, image, pricePerHour, kmLimit, description, features, locationId } = req.body;
 
-    if (!name || !type || !pricePerHour || !kmLimit) {
+    if (!name || !type || !pricePerHour || !kmLimit || !locationId) {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
     const newBike = new Bike({
       name,
       type,
+      brand: brand || '',
       image: image || '/bikes/default.jpg',
       pricePerHour: parseFloat(pricePerHour),
       kmLimit: parseInt(kmLimit),
       available: true,
       description: description || '',
-      features: features || []
+      features: features || [],
+      locationId
     });
 
     await newBike.save();
@@ -77,7 +116,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -103,7 +142,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 

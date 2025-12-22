@@ -56,8 +56,10 @@ export default function Auth() {
           title: "Success",
           description: "Logged in successfully!",
         });
-        // Redirect admin users to admin panel
-        if (data.user?.role === 'admin') {
+        // Redirect based on role
+        if (data.user?.role === 'superadmin') {
+          navigate('/superadmin');
+        } else if (data.user?.role === 'admin') {
           navigate('/admin');
         } else {
           navigate('/dashboard');
@@ -68,8 +70,10 @@ export default function Auth() {
           title: "Success",
           description: "Account created successfully! Welcome bonus of $10 added to your wallet.",
         });
-        // Redirect admin users to admin panel
-        if (data.user?.role === 'admin') {
+        // Redirect based on role
+        if (data.user?.role === 'superadmin') {
+          navigate('/superadmin');
+        } else if (data.user?.role === 'admin') {
           navigate('/admin');
         } else {
           navigate('/dashboard');

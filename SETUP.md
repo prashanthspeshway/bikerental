@@ -11,7 +11,7 @@ PORT=3000
 FRONTEND_URL=http://localhost:8080
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
-MONGODB_URI=mongodb+srv://bikerental:saranya@cluster0.602qj8l.mongodb.net/?appName=Cluster0
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-host>/<db>?retryWrites=true&w=majority
 MONGODB_DB_NAME=bikerental
 ```
 

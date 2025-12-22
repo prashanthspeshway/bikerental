@@ -14,6 +14,13 @@ const defaultUsers = [
     walletBalance: 1000,
   },
   {
+    name: 'Super Admin',
+    email: 'superadmin@bikerental.com',
+    password: 'super123',
+    role: 'superadmin',
+    walletBalance: 5000,
+  },
+  {
     name: 'John Doe',
     email: 'john@example.com',
     password: 'user123',
@@ -44,24 +51,21 @@ async function seedUsers() {
     // await User.deleteMany({});
     // console.log('Cleared existing users');
 
-    // Check if users already exist
-    const existingUsers = await User.find({ email: { $in: defaultUsers.map(u => u.email) } });
-    if (existingUsers.length > 0) {
-      console.log('⚠️  Some users already exist. Skipping seed.');
-      console.log('Existing users:', existingUsers.map(u => u.email).join(', '));
-      process.exit(0);
-    }
-
-    // Create users (password will be hashed by the pre-save hook)
+    // Create users that do not exist yet
     const createdUsers = [];
     for (const userData of defaultUsers) {
+      const exists = await User.findOne({ email: userData.email });
+      if (exists) {
+        console.log(`ℹ️  Skipped existing ${userData.role}: ${userData.email}`);
+        continue;
+      }
       const user = new User(userData);
       await user.save();
       createdUsers.push(user);
       console.log(`✅ Created ${userData.role}: ${userData.email} (password: ${userData.password})`);
     }
 
-    console.log(`\n✅ Seeded ${createdUsers.length} users`);
+    console.log(`\n✅ Seeded ${createdUsers.length} new users`);
     console.log('\n📋 Login Credentials:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Admin:');

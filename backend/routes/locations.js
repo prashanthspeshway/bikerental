@@ -47,7 +47,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -86,7 +86,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -118,7 +118,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 

@@ -18,7 +18,7 @@ const defaultBikes = [
   },
   {
     name: 'Trail Blazer MTB',
-    type: 'mountain',
+    type: 'fuel',
     image: '/bikes/mountain-1.jpg',
     pricePerHour: 12,
     kmLimit: 25,
@@ -28,7 +28,7 @@ const defaultBikes = [
   },
   {
     name: 'City Cruiser',
-    type: 'city',
+    type: 'scooter',
     image: '/bikes/city-1.jpg',
     pricePerHour: 8,
     kmLimit: 20,
@@ -38,7 +38,7 @@ const defaultBikes = [
   },
   {
     name: 'Velocity Sport',
-    type: 'sport',
+    type: 'fuel',
     image: '/bikes/sport-1.jpg',
     pricePerHour: 18,
     kmLimit: 40,
@@ -58,7 +58,7 @@ const defaultBikes = [
   },
   {
     name: 'Urban Explorer',
-    type: 'city',
+    type: 'scooter',
     image: '/bikes/city-2.jpg',
     pricePerHour: 10,
     kmLimit: 25,

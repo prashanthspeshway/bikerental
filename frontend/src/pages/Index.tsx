@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
@@ -33,6 +33,7 @@ const features = [
 ];
 
 export default function Index() {
+  const navigate = useNavigate();
   const [bikes, setBikes] = useState<Bike[]>([]);
 
   useEffect(() => {
@@ -190,7 +191,10 @@ export default function Index() {
                 className="animate-slide-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <BikeCard bike={bike} />
+                <BikeCard
+                  bike={bike}
+                  onRent={(b) => navigate(`/garage?rent=1&bikeId=${encodeURIComponent(b.id)}`)}
+                />
               </div>
             ))}
           </div>
