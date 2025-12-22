@@ -35,19 +35,11 @@ export default function Payment() {
 
   const handlePayment = async () => {
     try {
-      const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
-      if (!razorpayKeyId) {
-        toast({
-          title: 'Payment Setup Required',
-          description: 'Missing Razorpay key. Please configure VITE_RAZORPAY_KEY_ID.',
-          variant: 'destructive',
-        });
-        return;
-      }
       setLoading(true);
+      const { keyId } = await paymentsAPI.getKey();
       const order = await paymentsAPI.createOrder(totalAmount);
       const options = {
-        key: razorpayKeyId,
+        key: keyId,
         amount: order.amount,
         currency: order.currency,
         name: 'RideFlow',

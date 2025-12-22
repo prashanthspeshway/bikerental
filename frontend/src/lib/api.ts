@@ -120,6 +120,7 @@ export const documentsAPI = {
 };
 
 export const paymentsAPI = {
+  getKey: () => apiRequest<{ keyId: string }>('/payments/key'),
   createOrder: (amount: number) => apiRequest<any>('/payments/order', { method: 'POST', body: JSON.stringify({ amount }) }),
   verifyPayment: (payload: any) => apiRequest<any>('/payments/verify', { method: 'POST', body: JSON.stringify(payload) }),
 };
