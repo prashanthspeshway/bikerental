@@ -123,26 +123,55 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const newDocument = {
-      name,
-      type,
-      url: url || '/documents/placeholder.pdf',
-      status: 'pending',
-      uploadedAt: new Date()
-    };
+    // Check if there's an existing rejected document of the same type
+    // If found, replace it instead of creating a duplicate
+    const existingRejectedDoc = user.documents.find(
+      doc => doc.type === type && doc.status === 'rejected'
+    );
 
-    user.documents.push(newDocument);
-    await user.save();
+    if (existingRejectedDoc) {
+      // Update the existing rejected document
+      existingRejectedDoc.name = name;
+      existingRejectedDoc.url = url || '/documents/placeholder.pdf';
+      existingRejectedDoc.status = 'pending';
+      existingRejectedDoc.uploadedAt = new Date();
+      await user.save();
+      res.status(200).json(existingRejectedDoc);
+    } else {
+      // Check if there's already an approved document of the same type
+      const existingApprovedDoc = user.documents.find(
+        doc => doc.type === type && doc.status === 'approved'
+      );
+      
+      if (existingApprovedDoc) {
+        // If approved document exists, don't allow reupload
+        return res.status(400).json({ 
+          message: `You already have an approved ${type.replace('_', ' ')} document. Please contact admin if you need to update it.` 
+        });
+      }
 
-    const savedDoc = user.documents[user.documents.length - 1];
-    res.status(201).json(savedDoc);
+      // Create new document if no rejected document exists
+      const newDocument = {
+        name,
+        type,
+        url: url || '/documents/placeholder.pdf',
+        status: 'pending',
+        uploadedAt: new Date()
+      };
+
+      user.documents.push(newDocument);
+      await user.save();
+
+      const savedDoc = user.documents[user.documents.length - 1];
+      res.status(201).json(savedDoc);
+    }
   } catch (error) {
     console.error('Upload document error:', error);
     res.status(500).json({ message: 'Error uploading document' });
   }
 });
 
-// Update document status (admin only)
+// Update document status (superadmin only)
 router.put('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status } = req.body;
@@ -152,8 +181,8 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     }
 
     const currentUser = await User.findById(req.user.userId);
-    if (!['admin', 'superadmin'].includes(currentUser.role)) {
-      return res.status(403).json({ message: 'Admin access required' });
+    if (currentUser.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Super Admin access required' });
     }
 
     // Find user with this document

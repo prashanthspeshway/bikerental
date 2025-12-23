@@ -91,7 +91,6 @@ export function Navbar() {
         { path: '/', label: 'Home' },
         { path: '/tariff', label: 'Garage' },
         { path: '/garage', label: 'Ride Finder' },
-        { path: '/dashboard', label: 'Dashboard' },
       ];
 
   const selectedLocationData = locations.find(loc => loc.id === selectedLocation);
@@ -267,12 +266,14 @@ export function Navbar() {
               <div className="flex gap-3 pt-4 border-t border-border">
                 {user ? (
                   <>
-                    <Link to="/dashboard" className="flex-1">
-                      <Button variant="outline" className="w-full">
-                        <User className="h-4 w-4 mr-2" />
-                        {user.name}
-                      </Button>
-                    </Link>
+                    {user.role === 'superadmin' && (
+                      <Link to="/dashboard" className="flex-1">
+                        <Button variant="outline" className="w-full">
+                          <User className="h-4 w-4 mr-2" />
+                          Dashboard
+                        </Button>
+                      </Link>
+                    )}
                     <Button variant="outline" className="flex-1" onClick={handleLogout}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Logout

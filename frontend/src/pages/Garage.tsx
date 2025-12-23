@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Bike } from '@/types';
 import { Search, Zap, Gauge, Bike as BikeIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { bikesAPI, rentalsAPI, getCurrentUser } from '@/lib/api';
+import { bikesAPI, rentalsAPI, getCurrentUser, documentsAPI } from '@/lib/api';
 
 const bikeTypes = [
   { value: 'all', label: 'All Models', icon: null },
@@ -167,6 +167,48 @@ export default function Garage() {
   };
 
   const handleRent = async (bike: Bike) => {
+    const user = getCurrentUser();
+    if (!user) {
+      toast({ title: 'Login Required', description: 'Please login to book a ride.', variant: 'destructive' });
+      navigate('/auth');
+      return;
+    }
+
+    // Check if all documents are verified
+    try {
+      const userDocs = await documentsAPI.getAll();
+      const hasDocuments = userDocs && userDocs.length > 0;
+      const allApproved = hasDocuments && userDocs.every((doc: any) => doc.status === 'approved');
+      
+      if (!hasDocuments) {
+        toast({ 
+          title: 'Documents Required', 
+          description: 'Please upload and verify all required documents before booking a ride.', 
+          variant: 'destructive' 
+        });
+        navigate('/dashboard?tab=documents');
+        return;
+      }
+
+      if (!allApproved) {
+        const pendingCount = userDocs.filter((doc: any) => doc.status !== 'approved').length;
+        toast({ 
+          title: 'Documents Pending Verification', 
+          description: `You have ${pendingCount} document(s) pending verification. Please wait for admin approval before booking.`, 
+          variant: 'destructive' 
+        });
+        navigate('/dashboard?tab=documents');
+        return;
+      }
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to verify documents. Please try again.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setSelectedBike(bike);
     if (pickupDate && pickupTime && dropoffDate && dropoffTime) {
       setIsBookingConfirmationOpen(true);
@@ -259,7 +301,8 @@ export default function Garage() {
                             }
                           }
                         }}
-                        className="w-full"
+                        onClick={(e) => e.currentTarget.showPicker?.()}
+                        className="w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
                       <Select
                         value={pickupTime || undefined}
@@ -304,7 +347,8 @@ export default function Garage() {
                           const val = e.target.value;
                           setDropoffDate(val < todayStr ? todayStr : val);
                         }}
-                        className="w-full"
+                        onClick={(e) => e.currentTarget.showPicker?.()}
+                        className="w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
                       <Select
                         value={dropoffTime || undefined}
@@ -462,7 +506,14 @@ export default function Garage() {
                 <div>
                   <Label className="text-sm">Pickup</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="date" min={todayStr} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
+                    <Input 
+                      type="date" 
+                      min={todayStr} 
+                      value={pickupDate} 
+                      onChange={(e) => setPickupDate(e.target.value)}
+                      onClick={(e) => e.currentTarget.showPicker?.()}
+                      className="cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
                     <Select
                       value={pickupTime || undefined}
                       onValueChange={(val) => setPickupTime(val)}
@@ -481,7 +532,14 @@ export default function Garage() {
                 <div>
                   <Label className="text-sm">Dropoff</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="date" min={todayStr} value={dropoffDate} onChange={(e) => setDropoffDate(e.target.value)} />
+                    <Input 
+                      type="date" 
+                      min={todayStr} 
+                      value={dropoffDate} 
+                      onChange={(e) => setDropoffDate(e.target.value)}
+                      onClick={(e) => e.currentTarget.showPicker?.()}
+                      className="cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
                     <Select
                       value={dropoffTime || undefined}
                       onValueChange={(val) => setDropoffTime(val)}

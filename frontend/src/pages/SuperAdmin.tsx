@@ -71,6 +71,7 @@ export default function SuperAdmin() {
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<any | null>(null);
   const [locationForm, setLocationForm] = useState<any>({ name: '', city: '', state: '', country: '' });
+  const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>('all');
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -139,14 +140,76 @@ export default function SuperAdmin() {
     { key: 'locations', label: 'Locations', icon: MapPin },
   ];
 
-  const filteredUsers = users.filter((u) => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter data based on selected location
+  const getBikeLocationId = (bike: any) => {
+    if (typeof bike.locationId === 'object') {
+      return bike.locationId?.id || bike.locationId?._id || bike.locationId?.toString?.();
+    }
+    return bike.locationId;
+  };
+
+  const filteredBikes = selectedLocationFilter === 'all' 
+    ? bikes 
+    : bikes.filter(b => getBikeLocationId(b) === selectedLocationFilter);
+
+  const bikesById: Record<string, BikeType> = Object.fromEntries(filteredBikes.map(b => [b.id, b]));
+  
+  const filteredRentals = selectedLocationFilter === 'all'
+    ? rentals
+    : rentals.filter(r => {
+        const bike = bikes.find(b => b.id === r.bikeId);
+        return bike && getBikeLocationId(bike) === selectedLocationFilter;
+      });
+
+  const filteredUsers = selectedLocationFilter === 'all'
+    ? users.filter((u) => 
+        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : (() => {
+        const userIdsFromRentals = new Set(filteredRentals.map(r => r.userId));
+        return users.filter(u => 
+          userIdsFromRentals.has(u.id) &&
+          (u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      })();
+
+  const filteredDocuments = selectedLocationFilter === 'all'
+    ? documents
+    : (() => {
+        const userIdsFromRentals = new Set(filteredRentals.map(r => r.userId));
+        return documents.filter(d => userIdsFromRentals.has(d.userId));
+      })();
 
   const handleDocumentAction = async (docId: string, action: 'approve' | 'reject') => {
-    await documentsAPI.updateStatus(docId, action === 'approve' ? 'approved' : 'rejected');
-    toast({ title: 'Updated', description: `Document ${action}d` });
+    try {
+      await documentsAPI.updateStatus(docId, action === 'approve' ? 'approved' : 'rejected');
+      toast({ title: 'Updated', description: `Document ${action}d` });
+      loadData();
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.message || `Failed to ${action} document`,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleViewUserDocuments = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Get user documents from the documents array
+    const userDocs = documents.filter(d => d.userId === userId);
+    setSelectedDocumentUser({ ...user, documents: userDocs });
+    setIsDocumentDialogOpen(true);
   };
 
   const handleVerifyUser = async (userId: string) => {
@@ -155,12 +218,12 @@ export default function SuperAdmin() {
     loadData();
   };
   
-  const rentalsActive = rentals.filter((r) => r.status === 'active');
-  const uniqueModelNames = Array.from(new Set(bikes.map((b) => b.name)));
+  const rentalsActive = filteredRentals.filter((r) => r.status === 'active');
+  const uniqueModelNames = Array.from(new Set(filteredBikes.map((b) => b.name)));
   const revenueByPeriod = (days: number) => {
     const now = Date.now();
     const cutoff = now - days * 24 * 60 * 60 * 1000;
-    return rentals
+    return filteredRentals
       .filter((r) => r.totalCost && new Date(r.endTime || r.startTime).getTime() >= cutoff)
       .reduce((sum, r) => sum + (r.totalCost || 0), 0);
   };
@@ -219,21 +282,48 @@ export default function SuperAdmin() {
 
       {/* Main */}
       <main className="flex-1 p-6">
+        {/* Location Filter - Global for all tabs */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MapPin className="h-5 w-5 text-muted-foreground" />
+            <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Filter by Location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) && (
+              <Badge variant="secondary" className="ml-2">
+                {locations.find(loc => loc.id === selectedLocationFilter)?.name}
+              </Badge>
+            )}
+          </div>
+        </div>
+
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-display font-bold mb-2">Super Admin Dashboard</h1>
-              <p className="text-muted-foreground">Global view across all cities and garages.</p>
+              <p className="text-muted-foreground">
+                {selectedLocationFilter === 'all' 
+                  ? 'Global view across all cities and garages.' 
+                  : `View for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'selected location'}.`}
+              </p>
             </div>
 
             {/* Stats */}
             <div className="grid md:grid-cols-4 gap-4">
               {[
-                { label: 'Cities', value: locations.length, icon: MapPin, color: 'bg-accent' },
+                { label: 'Cities', value: selectedLocationFilter === 'all' ? locations.length : 1, icon: MapPin, color: 'bg-accent' },
                 { label: 'Bike Models', value: uniqueModelNames.length, icon: Bike, color: 'bg-secondary' },
-                { label: 'Fleet Inventory', value: bikes.length, icon: Bike, color: 'gradient-hero' },
+                { label: 'Fleet Inventory', value: filteredBikes.length, icon: Bike, color: 'gradient-hero' },
                 { label: 'Active Bookings', value: rentalsActive.length, icon: Calendar, color: 'bg-primary' },
-                { label: 'Registered Users', value: users.length, icon: Users, color: 'bg-secondary' },
+                { label: 'Registered Users', value: filteredUsers.length, icon: Users, color: 'bg-secondary' },
               ].map((stat) => (
                 <div key={stat.label} className="bg-card rounded-2xl shadow-card p-6">
                   <div className="flex items-center gap-4">
@@ -304,10 +394,10 @@ export default function SuperAdmin() {
                   <Input placeholder="Search brands..." value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)} />
                 </div>
               </div>
-              {Array.from(new Set(bikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
+              {Array.from(new Set(filteredBikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
                 .filter((brand) => brand.toLowerCase().includes(brandSearch.toLowerCase()))
                 .map((brand) => {
-                  const brandBikes = bikes.filter((b) => (((b.brand || '').trim() || 'Unbranded')) === brand);
+                  const brandBikes = filteredBikes.filter((b) => (((b.brand || '').trim() || 'Unbranded')) === brand);
                   return (
                     <div key={brand} className="mb-6">
                       <div className="flex items-center justify-between mb-2">
@@ -556,9 +646,24 @@ export default function SuperAdmin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {rentals.map((r) => {
-                    const bike = bikes.find((b) => b.id === r.bikeId);
-                    const user = users.find((u) => u.id === r.userId);
+                  {filteredRentals.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                          <p className="text-lg font-medium text-muted-foreground mb-2">No bookings found</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedLocationFilter === 'all' 
+                              ? 'There are no bookings yet.' 
+                              : `There are no bookings for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'this location'} yet.`}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRentals.map((r) => {
+                      const bike = filteredBikes.find((b) => b.id === r.bikeId) || bikes.find((b) => b.id === r.bikeId);
+                      const user = filteredUsers.find((u) => u.id === r.userId) || users.find((u) => u.id === r.userId);
                     return (
                       <tr key={r.id}>
                         <td className="px-6 py-4">#{r.id.slice(0,8)}</td>
@@ -583,7 +688,8 @@ export default function SuperAdmin() {
                         </td>
                       </tr>
                     );
-                  })}
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -617,7 +723,18 @@ export default function SuperAdmin() {
                 </div>
               </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                {bikes.map((bike) => (
+                {filteredBikes.length === 0 ? (
+                  <div className="col-span-full text-center py-12">
+                    <Bike className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground mb-2">No vehicles found</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedLocationFilter === 'all' 
+                        ? 'There are no vehicles yet.' 
+                        : `There are no vehicles for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'this location'} yet.`}
+                    </p>
+                  </div>
+                ) : (
+                  filteredBikes.map((bike) => (
                   <div key={bike.id} className="border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="font-medium">{bike.name}</p>
@@ -666,7 +783,8 @@ export default function SuperAdmin() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -722,50 +840,141 @@ export default function SuperAdmin() {
         )}
 
         {activeTab === 'documents' && (
-          <div className="bg-card rounded-2xl shadow-card p-6">
-            <h2 className="font-display font-semibold text-lg mb-4">All Documents</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {documents.map((doc: any) => {
-                const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
-                return (
-                  <div key={doc.id} className="border rounded-lg p-4 bg-card">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="font-semibold">{doc.type.replace('_', ' ')}</p>
-                        <p className="text-xs text-muted-foreground">{doc.name}</p>
-                      </div>
-                      <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
-                        {doc.status}
-                      </Badge>
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-display font-bold mb-2">All Documents</h1>
+              <p className="text-muted-foreground">Review and approve user-submitted documents grouped by user.</p>
+            </div>
+
+            <div className="grid gap-4">
+              {(() => {
+                // Get unique users who have documents
+                const userIdsWithDocs = new Set(filteredDocuments.map(d => d.userId));
+                const usersWithDocs = filteredUsers.filter(u => userIdsWithDocs.has(u.id));
+                
+                if (usersWithDocs.length === 0) {
+                  return (
+                    <div className="col-span-full text-center py-12">
+                      <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-muted-foreground mb-2">No users with documents found</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedLocationFilter === 'all' 
+                          ? 'There are no documents yet.' 
+                          : `There are no documents for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'this location'} yet.`}
+                      </p>
                     </div>
-                    <div className="mb-3 border rounded-lg overflow-hidden bg-muted/30">
-                      {doc.url && (
-                        <img
-                          src={doc.url}
-                          alt={doc.name}
-                          className="w-full h-40 object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      )}
-                    </div>
-                    {doc.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id, 'reject')}>
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Reject
-                        </Button>
-                        <Button size="sm" onClick={() => handleDocumentAction(doc.id, 'approve')}>
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Approve
+                  );
+                }
+                
+                return usersWithDocs.map((user) => {
+                  const userDocs = filteredDocuments.filter(doc => doc.userId === user.id);
+                  if (userDocs.length === 0) return null;
+                  
+                  const pendingCount = userDocs.filter(d => d.status === 'pending').length;
+                  const approvedCount = userDocs.filter(d => d.status === 'approved').length;
+                  const rejectedCount = userDocs.filter(d => d.status === 'rejected').length;
+                  
+                  return (
+                    <div key={user.id} className="bg-card rounded-2xl shadow-card p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Users className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-lg">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            {user.mobile && (
+                              <p className="text-sm text-muted-foreground">{user.mobile}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewUserDocuments(user.id)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Documents
                         </Button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      
+                      <div className="flex gap-4 mb-4">
+                        <Badge variant="outline" className="bg-primary/10">
+                          Total: {userDocs.length}
+                        </Badge>
+                        {pendingCount > 0 && (
+                          <Badge className="bg-primary/10 text-primary">
+                            Pending: {pendingCount}
+                          </Badge>
+                        )}
+                        {approvedCount > 0 && (
+                          <Badge className="bg-accent/10 text-accent">
+                            Approved: {approvedCount}
+                          </Badge>
+                        )}
+                        {rejectedCount > 0 && (
+                          <Badge className="bg-destructive/10 text-destructive">
+                            Rejected: {rejectedCount}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {userDocs.map((doc) => {
+                          const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
+                          return (
+                            <div key={doc.id} className="border rounded-lg p-3 bg-muted/30">
+                              <div className="flex items-center justify-between mb-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color} variant="outline">
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {doc.status}
+                                </Badge>
+                              </div>
+                              <p className="text-xs font-medium mb-1">{doc.type.replace('_', ' ')}</p>
+                              <p className="text-xs text-muted-foreground mb-2">{doc.name}</p>
+                              {doc.url && (
+                                <div className="mb-2 border rounded overflow-hidden bg-background">
+                                  <img
+                                    src={doc.url}
+                                    alt={doc.name}
+                                    className="w-full h-24 object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              {doc.status === 'pending' && (
+                                <div className="flex gap-1 mt-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="flex-1 text-xs"
+                                    onClick={() => handleDocumentAction(doc.id, 'reject')}
+                                  >
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Reject
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    className="flex-1 text-xs"
+                                    onClick={() => handleDocumentAction(doc.id, 'approve')}
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Approve
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }).filter(Boolean);
+              })()}
             </div>
           </div>
         )}
@@ -993,6 +1202,140 @@ export default function SuperAdmin() {
               <Button variant="outline" onClick={() => setBikeDialogOpen(false)}>Cancel</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Documents Dialog */}
+      <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Documents Review</DialogTitle>
+            <DialogDescription>
+              Review and verify documents for {selectedDocumentUser?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDocumentUser && (
+            <div className="space-y-6">
+              {/* User Info */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{selectedDocumentUser.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium">{selectedDocumentUser.email}</p>
+                  </div>
+                  {selectedDocumentUser.mobile && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Mobile</p>
+                      <p className="font-medium">{selectedDocumentUser.mobile}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    {selectedDocumentUser.isVerified ? (
+                      <Badge className="bg-accent/10 text-accent">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Verified
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-destructive/10 text-destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Unverified
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents Grid */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {selectedDocumentUser.documents && selectedDocumentUser.documents.length > 0 ? (
+                  selectedDocumentUser.documents.map((doc: any) => {
+                    const StatusIcon = statusStyles[doc.status as keyof typeof statusStyles].icon;
+                    return (
+                      <div key={doc.id || doc._id} className="border rounded-lg p-4 bg-card">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="font-semibold">{doc.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                            <p className="text-xs text-muted-foreground">{doc.name}</p>
+                          </div>
+                          <Badge className={statusStyles[doc.status as keyof typeof statusStyles].color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {doc.status}
+                          </Badge>
+                        </div>
+                        
+                        {/* Document Preview */}
+                        <div className="mb-3 border rounded-lg overflow-hidden bg-muted/30">
+                          {doc.url && (
+                            <img 
+                              src={doc.url} 
+                              alt={doc.name}
+                              className="w-full h-48 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/documents/placeholder.pdf';
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                          </p>
+                          {doc.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  handleDocumentAction(doc.id || doc._id, 'reject');
+                                }}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => {
+                                  handleDocumentAction(doc.id || doc._id, 'approve');
+                                }}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-muted-foreground text-center py-8 col-span-2">No documents uploaded</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              {!selectedDocumentUser.isVerified && selectedDocumentUser.documents?.some((d: any) => d.status === 'approved') && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsDocumentDialogOpen(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => {
+                    handleVerifyUser(selectedDocumentUser.id);
+                    setIsDocumentDialogOpen(false);
+                  }}>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Verify User
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

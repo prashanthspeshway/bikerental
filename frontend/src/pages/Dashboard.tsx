@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ const statusStyles = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
   const [topUpAmount, setTopUpAmount] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -69,8 +70,15 @@ export default function Dashboard() {
       navigate('/auth');
       return;
     }
+    
+    // Check for tab parameter in URL
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'wallet', 'documents', 'rentalHistory'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    
     loadUserData();
-  }, []);
+  }, [searchParams]);
 
   const loadUserData = async () => {
     setIsLoading(true);

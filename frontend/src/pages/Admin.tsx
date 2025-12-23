@@ -67,6 +67,8 @@ export default function Admin() {
   const [editingBike, setEditingBike] = useState<any | null>(null);
   const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
   const [brandSearch, setBrandSearch] = useState('');
+  const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
+  const [allVehiclesSearchQuery, setAllVehiclesSearchQuery] = useState('');
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -224,7 +226,6 @@ export default function Admin() {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'vehicles', label: 'Vehicles', icon: Bike },
     { id: 'bikes', label: 'Bikes', icon: Bike },
     { id: 'allVehicles', label: 'All Vehicles', icon: Bike },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
@@ -268,7 +269,9 @@ export default function Admin() {
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  const documentsForLocation = documents.filter(d => userIdsForLocation.has(d.userId));
+  // For documents tab, show all documents (not filtered by location)
+  // This allows admins to see all users with documents, not just those with rentals
+  const documentsForLocation = documents;
   const today = new Date().toISOString().slice(0, 10);
   const pickupsToday = rentalsForLocation.filter(r => r.startTime?.slice(0, 10) === today).length;
   const dropoffsToday = rentalsForLocation.filter(r => r.endTime && r.endTime.slice(0, 10) === today).length;
@@ -339,9 +342,21 @@ export default function Admin() {
         {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
-            <div>
-              <h1 className="text-2xl font-display font-bold mb-2">Dashboard</h1>
-              <p className="text-muted-foreground">Operational overview for your assigned city/garage.</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-2xl font-display font-bold">Dashboard</h1>
+                  {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-lg">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-primary">
+                        {locations.find(loc => loc.id === selectedLocationId)?.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-muted-foreground">Operational overview for your assigned city/garage.</p>
+              </div>
             </div>
 
             {/* Stats */}
@@ -398,117 +413,6 @@ export default function Admin() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Vehicles (Brand Grouping) */}
-        {activeTab === 'vehicles' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-display font-bold mb-2">Vehicles</h1>
-                <p className="text-muted-foreground">Browse vehicles grouped by brand.</p>
-              </div>
-              <Button
-                onClick={() => {
-                  setEditingBike(null);
-                  setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: selectedLocationId || '', image: '' });
-                  setBikeDialogOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Vehicle
-              </Button>
-            </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="p-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search brands..." value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)} />
-                </div>
-              </div>
-              {Array.from(new Set(bikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
-                .filter((brand) => brand.toLowerCase().includes(brandSearch.toLowerCase()))
-                .map((brand) => {
-                  const brandBikes = bikes.filter((b) => (((b.brand || '').trim() || 'Unbranded')) === brand);
-                  return (
-                    <div key={brand} className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <h2 className="font-display font-semibold text-lg">{brand}</h2>
-                        <Badge variant="secondary">{brandBikes.length} vehicles</Badge>
-                      </div>
-                      {(['fuel','electric','scooter'] as const).map((t) => {
-                        const typeBikes = brandBikes.filter((b) => b.type === t);
-                        if (!typeBikes.length) return null;
-                        const typeLabel = t.charAt(0).toUpperCase() + t.slice(1);
-                        return (
-                          <div key={`${brand}-${t}`} className="mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="font-display font-medium">{typeLabel}</h3>
-                              <Badge variant="secondary">{typeBikes.length} {typeLabel.toLowerCase()}</Badge>
-                            </div>
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {typeBikes.map((bike) => (
-                                <div key={bike.id} className="border rounded-lg p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="font-medium">{bike.name}</p>
-                                    <Badge variant="secondary">{bike.type}</Badge>
-                                  </div>
-                                  {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {(bike.brand || '').trim() || 'Unbranded'}</p>}
-                                  {bike.image && (
-                                    <img src={bike.image} alt={bike.name} className="w-full h-32 object-cover rounded-md mb-2" />
-                                  )}
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">${bike.pricePerHour}/hr</p>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setEditingBike(bike);
-                                          setBikeForm({
-                                            name: bike.name,
-                                            brand: bike.brand || '',
-                                            type: bike.type,
-                                            pricePerHour: String(bike.pricePerHour),
-                                            kmLimit: String(bike.kmLimit),
-                                            locationId: bike.locationId,
-                                            image: bike.image || '',
-                                          });
-                                          setBikeDialogOpen(true);
-                                        }}
-                                      >
-                                        <Edit className="h-3 w-3 mr-1" />
-                                        Edit
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={async () => {
-                                          try {
-                                            await bikesAPI.delete(bike.id);
-                                            toast({ title: 'Vehicle deleted' });
-                                            loadData();
-                                          } catch (e: any) {
-                                            toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
-                                          }
-                                        }}
-                                      >
-                                        <Trash2 className="h-3 w-3 mr-1" />
-                                        Delete
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
             </div>
           </div>
         )}
@@ -622,7 +526,15 @@ export default function Admin() {
               <Button
                 onClick={() => {
                   setEditingBike(null);
-                  setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: selectedLocationId || '', image: '' });
+                  setBikeForm({ 
+                    name: '', 
+                    brand: '', 
+                    type: 'fuel', 
+                    pricePerHour: '', 
+                    kmLimit: '', 
+                    locationId: currentUser?.role === 'superadmin' ? '' : (selectedLocationId || ''), 
+                    image: '' 
+                  });
                   setBikeDialogOpen(true);
                 }}
               >
@@ -632,58 +544,102 @@ export default function Admin() {
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
               <div className="p-4">
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search vehicles..." />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search vehicles..." 
+                      value={allVehiclesSearchQuery}
+                      onChange={(e) => setAllVehiclesSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Select value={selectedBrandFilter} onValueChange={setSelectedBrandFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filter by Brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Brands</SelectItem>
+                      {Array.from(new Set(bikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
+                        .sort()
+                        .map((brand) => (
+                          <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                {bikes.map((bike) => (
-                  <div key={bike.id} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">{bike.name}</p>
-                      <Badge variant="secondary">{bike.type}</Badge>
-                    </div>
-                    {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {bike.brand}</p>}
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">${bike.pricePerHour}/hr</p>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditingBike(bike);
-                            setBikeForm({
-                              name: bike.name,
-                              brand: bike.brand || '',
-                              type: bike.type,
-                              pricePerHour: String(bike.pricePerHour),
-                              kmLimit: String(bike.kmLimit),
-                              locationId: bike.locationId,
-                              image: bike.image || '',
-                            });
-                            setBikeDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={async () => {
-                            try {
-                              await bikesAPI.delete(bike.id);
-                              toast({ title: 'Vehicle deleted' });
-                              loadData();
-                            } catch (e: any) {
-                              toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Delete
-                        </Button>
+              <div className="grid grid-cols-3 gap-4 p-4">
+                {bikes
+                  .filter((bike) => {
+                    const matchesSearch = allVehiclesSearchQuery === '' || 
+                      bike.name.toLowerCase().includes(allVehiclesSearchQuery.toLowerCase()) ||
+                      (bike.brand && bike.brand.toLowerCase().includes(allVehiclesSearchQuery.toLowerCase()));
+                    const matchesBrand = selectedBrandFilter === 'all' || 
+                      ((bike.brand || '').trim() || 'Unbranded') === selectedBrandFilter;
+                    return matchesSearch && matchesBrand;
+                  })
+                  .map((bike) => (
+                  <div key={bike.id} className="border rounded-lg p-3 flex flex-col bg-card h-full min-w-0">
+                    {bike.image && (
+                      <div className="relative mb-2 h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
+                        <img 
+                          src={bike.image} 
+                          alt={bike.name} 
+                          className="max-w-full max-h-full object-contain rounded-md"
+                          style={{ imageRendering: 'auto' as const }}
+                        />
+                        <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
+                      </div>
+                    )}
+                    {!bike.image && (
+                      <div className="relative mb-2 bg-muted rounded-md h-48 flex items-center justify-center flex-shrink-0">
+                        <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
+                        <Bike className="h-12 w-12 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <p className="font-medium mb-1 truncate">{bike.name}</p>
+                      {bike.brand && <p className="text-xs text-muted-foreground mb-2 truncate">Brand: {bike.brand}</p>}
+                      <div className="mt-auto flex items-center justify-between pt-2 gap-2">
+                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              setEditingBike(bike);
+                              setBikeForm({
+                                name: bike.name,
+                                brand: bike.brand || '',
+                                type: bike.type,
+                                pricePerHour: String(bike.pricePerHour),
+                                kmLimit: String(bike.kmLimit),
+                                locationId: currentUser?.role === 'superadmin' ? bike.locationId : (selectedLocationId || bike.locationId),
+                                image: bike.image || '',
+                              });
+                              setBikeDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 px-2 text-xs"
+                            onClick={async () => {
+                              try {
+                                await bikesAPI.delete(bike.id);
+                                toast({ title: 'Vehicle deleted' });
+                                loadData();
+                              } catch (e: any) {
+                                toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -714,80 +670,92 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {rentalsForLocation.map((r) => {
-                    const bike = bikesById[r.bikeId] || r.bike;
-                    const user = users.find(u => u.id === r.userId) || r.user;
-                    return (
-                      <tr key={r.id} className="hover:bg-muted/30">
-                        <td className="px-6 py-4 font-medium">#{r.id.slice(0,8)}</td>
-                        <td className="px-6 py-4">{bike?.name || r.bikeId}</td>
-                        <td className="px-6 py-4">{user?.name || r.userId}</td>
-                        <td className="px-6 py-4">{new Date(r.pickupTime || r.startTime).toLocaleString()}</td>
-                        <td className="px-6 py-4">{r.dropoffTime || r.endTime ? new Date(r.dropoffTime || r.endTime).toLocaleString() : '-'}</td>
-                        <td className="px-6 py-4">
-                          <Badge className={statusStyles[r.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
-                            {r.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {(r.status === 'ongoing' || r.status === 'active') && (
-                              <Button
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    await rentalsAPI.completeRide(r.id);
-                                    toast({ title: "Ride Ended", description: "Booking closed successfully." });
-                                    loadData();
-                                  } catch (e: any) {
-                                    toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
-                                  }
-                                }}
-                              >
-                                End Ride
+                  {rentalsForLocation.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                          <p className="text-lg font-medium text-muted-foreground mb-2">No bookings found</p>
+                          <p className="text-sm text-muted-foreground">There are no bookings for your location yet.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    rentalsForLocation.map((r) => {
+                      const bike = bikesById[r.bikeId] || r.bike;
+                      const user = users.find(u => u.id === r.userId) || r.user;
+                      return (
+                        <tr key={r.id} className="hover:bg-muted/30">
+                          <td className="px-6 py-4 font-medium">#{r.id.slice(0,8)}</td>
+                          <td className="px-6 py-4">{bike?.name || r.bikeId}</td>
+                          <td className="px-6 py-4">{user?.name || r.userId}</td>
+                          <td className="px-6 py-4">{new Date(r.pickupTime || r.startTime).toLocaleString()}</td>
+                          <td className="px-6 py-4">{r.dropoffTime || r.endTime ? new Date(r.dropoffTime || r.endTime).toLocaleString() : '-'}</td>
+                          <td className="px-6 py-4">
+                            <Badge className={statusStyles[r.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                              {r.status}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {(r.status === 'ongoing' || r.status === 'active') && (
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await rentalsAPI.completeRide(r.id);
+                                      toast({ title: "Ride Ended", description: "Booking closed successfully." });
+                                      loadData();
+                                    } catch (e: any) {
+                                      toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  End Ride
+                                </Button>
+                              )}
+                              {r.status === 'confirmed' && (
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await rentalsAPI.startRide(r.id);
+                                      toast({ title: "Ride Started", description: "Booking started successfully." });
+                                      loadData();
+                                    } catch (e: any) {
+                                      toast({ title: "Error", description: e.message || "Failed to start ride", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  Start Ride
+                                </Button>
+                              )}
+                              {r.status !== 'completed' && r.status !== 'cancelled' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await rentalsAPI.cancel(r.id);
+                                      toast({ title: "Booking Cancelled", description: "Booking cancelled successfully." });
+                                      loadData();
+                                    } catch (e: any) {
+                                      toast({ title: "Error", description: e.message || "Failed to cancel", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" disabled>
+                                Extend
                               </Button>
-                            )}
-                            {r.status === 'confirmed' && (
-                              <Button
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    await rentalsAPI.startRide(r.id);
-                                    toast({ title: "Ride Started", description: "Booking started successfully." });
-                                    loadData();
-                                  } catch (e: any) {
-                                    toast({ title: "Error", description: e.message || "Failed to start ride", variant: "destructive" });
-                                  }
-                                }}
-                              >
-                                Start Ride
-                              </Button>
-                            )}
-                            {r.status !== 'completed' && r.status !== 'cancelled' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    await rentalsAPI.cancel(r.id);
-                                    toast({ title: "Booking Cancelled", description: "Booking cancelled successfully." });
-                                    loadData();
-                                  } catch (e: any) {
-                                    toast({ title: "Error", description: e.message || "Failed to cancel", variant: "destructive" });
-                                  }
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="sm" disabled>
-                              Extend
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -872,12 +840,26 @@ export default function Admin() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-display font-bold mb-2">User Documents</h1>
-              <p className="text-muted-foreground">Review and approve user-submitted documents.</p>
+              <p className="text-muted-foreground">View user-submitted documents. Document verification is handled by Super Admin.</p>
             </div>
 
             <div className="grid gap-4">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => {
+              {(() => {
+                // Get unique users who have documents (not just those with rentals)
+                const userIdsWithDocs = new Set(documentsForLocation.map(d => d.userId));
+                const usersWithDocs = users.filter(u => userIdsWithDocs.has(u.id))
+                  .filter(user =>
+                    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+                
+                if (usersWithDocs.length === 0) {
+                  return (
+                    <p className="text-muted-foreground text-center py-8">No users with documents found</p>
+                  );
+                }
+                
+                return usersWithDocs.map((user) => {
                   const userDocs = documentsForLocation.filter(doc => doc.userId === user.id);
                   if (userDocs.length === 0) return null;
                   
@@ -953,10 +935,8 @@ export default function Admin() {
                       </div>
                     </div>
                   );
-                }).filter(Boolean)
-              ) : (
-                <p className="text-muted-foreground text-center py-8">No users with documents found</p>
-              )}
+                }).filter(Boolean);
+              })()}
             </div>
           </div>
         )}
@@ -998,14 +978,16 @@ export default function Admin() {
             </Select>
             <Input placeholder="Price Per Hour" value={bikeForm.pricePerHour} onChange={(e) => setBikeForm({ ...bikeForm, pricePerHour: e.target.value })} />
             <Input placeholder="KM Limit" value={bikeForm.kmLimit} onChange={(e) => setBikeForm({ ...bikeForm, kmLimit: e.target.value })} />
-            <Select value={bikeForm.locationId} onValueChange={(v) => setBikeForm({ ...bikeForm, locationId: v })}>
-              <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
-              <SelectContent>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {currentUser?.role === 'superadmin' && (
+              <Select value={bikeForm.locationId} onValueChange={(v) => setBikeForm({ ...bikeForm, locationId: v })}>
+                <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="space-y-2">
               <Input placeholder="Image URL" value={bikeForm.image} onChange={(e) => setBikeForm({ ...bikeForm, image: e.target.value })} />
               <div className="flex items-center gap-2">
@@ -1043,7 +1025,7 @@ export default function Admin() {
                       type: bikeForm.type,
                       pricePerHour: parseFloat(bikeForm.pricePerHour),
                       kmLimit: parseInt(bikeForm.kmLimit),
-                      locationId: bikeForm.locationId,
+                      locationId: currentUser?.role === 'superadmin' ? bikeForm.locationId : selectedLocationId,
                       image: bikeForm.image,
                     };
                     if (editingBike) {
@@ -1151,14 +1133,9 @@ export default function Admin() {
                               {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
                             </Badge>
                             {doc.status === 'pending' && (
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleDocumentAction(doc.id || doc._id, 'reject')}>
-                                  Reject
-                                </Button>
-                                <Button size="sm" onClick={() => handleDocumentAction(doc.id || doc._id, 'approve')}>
-                                  Approve
-                                </Button>
-                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                Awaiting Super Admin approval
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -1270,29 +1247,9 @@ export default function Admin() {
                             Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                           </p>
                           {doc.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  handleDocumentAction(doc.id || doc._id, 'reject');
-                                  loadData();
-                                }}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Reject
-                              </Button>
-                              <Button 
-                                size="sm"
-                                onClick={() => {
-                                  handleDocumentAction(doc.id || doc._id, 'approve');
-                                  loadData();
-                                }}
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              Awaiting Super Admin approval
+                            </Badge>
                           )}
                         </div>
                       </div>

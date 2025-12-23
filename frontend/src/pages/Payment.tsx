@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { getCurrentUser, paymentsAPI } from '@/lib/api';
+import { getCurrentUser, paymentsAPI, documentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
 
@@ -32,7 +32,47 @@ export default function Payment() {
     if (!user) {
       toast({ title: 'Login Required', description: 'Please login to continue payment.', variant: 'destructive' });
       navigate('/auth');
+      return;
     }
+
+    // Check if all documents are verified
+    const checkDocuments = async () => {
+      try {
+        const userDocs = await documentsAPI.getAll();
+        const hasDocuments = userDocs && userDocs.length > 0;
+        const allApproved = hasDocuments && userDocs.every((doc: any) => doc.status === 'approved');
+        
+        if (!hasDocuments) {
+          toast({ 
+            title: 'Documents Required', 
+            description: 'Please upload and verify all required documents before booking a ride.', 
+            variant: 'destructive' 
+          });
+          navigate('/dashboard?tab=documents');
+          return;
+        }
+
+        if (!allApproved) {
+          const pendingCount = userDocs.filter((doc: any) => doc.status !== 'approved').length;
+          toast({ 
+            title: 'Documents Pending Verification', 
+            description: `You have ${pendingCount} document(s) pending verification. Please wait for admin approval before booking.`, 
+            variant: 'destructive' 
+          });
+          navigate('/dashboard?tab=documents');
+          return;
+        }
+      } catch (error: any) {
+        toast({ 
+          title: 'Error', 
+          description: 'Failed to verify documents. Please try again.', 
+          variant: 'destructive' 
+        });
+        navigate('/garage');
+      }
+    };
+
+    checkDocuments();
   }, [bookingDetails, navigate]);
 
   if (!bookingDetails) return null;

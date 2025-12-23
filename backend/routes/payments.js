@@ -77,6 +77,21 @@ router.post('/verify', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
+    // Check if all documents are verified
+    const hasDocuments = user.documents && user.documents.length > 0;
+    if (!hasDocuments) {
+      return res.status(400).json({ success: false, message: 'Please upload and verify all required documents before booking a ride.' });
+    }
+
+    const allApproved = user.documents.every(doc => doc.status === 'approved');
+    if (!allApproved) {
+      const pendingCount = user.documents.filter(doc => doc.status !== 'approved').length;
+      return res.status(400).json({ 
+        success: false, 
+        message: `You have ${pendingCount} document(s) pending verification. Please wait for admin approval before booking.` 
+      });
+    }
+
     let bookingId = generateBookingId();
     let existing = await Rental.findOne({ bookingId });
     if (existing) {
