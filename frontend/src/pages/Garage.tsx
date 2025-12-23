@@ -48,7 +48,8 @@ export default function Garage() {
   const loadBikes = async () => {
     try {
       setIsLoading(true);
-      const data = await bikesAPI.getAll();
+      const savedLocation = localStorage.getItem('selectedLocation') || undefined;
+      const data = await bikesAPI.getAll(savedLocation);
       setBikes(data);
       const rent = searchParams.get('rent');
       const bikeIdParam = searchParams.get('bikeId');
@@ -156,7 +157,8 @@ export default function Garage() {
     const endISO = new Date(`${dropoffDate}T${dropoffTime}`).toISOString();
     try {
       setIsLoading(true);
-      const available = await bikesAPI.getAvailable(startISO, endISO);
+      const savedLocation = localStorage.getItem('selectedLocation') || undefined;
+      const available = await bikesAPI.getAvailable(startISO, endISO, savedLocation);
       setBikes(available);
       setTimeFilterApplied(true);
       setIsSearchDialogOpen(false);
@@ -178,6 +180,14 @@ export default function Garage() {
 
   const handleBookingConfirm = async () => {
     if (!selectedBike || !pickupDate || !pickupTime || !dropoffDate || !dropoffTime) return;
+
+    const user = getCurrentUser();
+    if (!user) {
+      setIsBookingConfirmationOpen(false);
+      toast({ title: 'Login Required', description: 'Please login to confirm your booking.', variant: 'destructive' });
+      navigate('/auth');
+      return;
+    }
     
     // Calculate duration and amount
     const start = new Date(`${pickupDate}T${pickupTime}`);

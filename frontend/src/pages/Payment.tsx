@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { paymentsAPI } from '@/lib/api';
+import { getCurrentUser, paymentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
 
@@ -26,6 +26,12 @@ export default function Payment() {
   useEffect(() => {
     if (!bookingDetails) {
       navigate('/garage');
+      return;
+    }
+    const user = getCurrentUser();
+    if (!user) {
+      toast({ title: 'Login Required', description: 'Please login to continue payment.', variant: 'destructive' });
+      navigate('/auth');
     }
   }, [bookingDetails, navigate]);
 

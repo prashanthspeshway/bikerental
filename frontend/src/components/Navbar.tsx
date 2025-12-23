@@ -34,12 +34,6 @@ export function Navbar() {
     
     // Load locations
     loadLocations();
-    
-    // Get selected location from localStorage
-    const savedLocation = localStorage.getItem('selectedLocation');
-    if (savedLocation) {
-      setSelectedLocation(savedLocation);
-    }
   }, [location]);
 
   const loadLocations = async () => {
@@ -47,12 +41,25 @@ export function Navbar() {
       const data = await locationsAPI.getAll();
       setLocations(data);
       
-      // If no location selected and locations exist, select first one
-      if (!selectedLocation && data.length > 0) {
-        const firstLocation = data[0].id;
-        setSelectedLocation(firstLocation);
-        localStorage.setItem('selectedLocation', firstLocation);
+      const savedLocation = localStorage.getItem('selectedLocation') || '';
+      let nextLocationId = '';
+      const ids = new Set(data.map((l) => l.id));
+      if (savedLocation && ids.has(savedLocation)) {
+        nextLocationId = savedLocation;
+      } else if (savedLocation) {
+        const byName = data.find((l) => l.name === savedLocation);
+        if (byName?.id) {
+          nextLocationId = byName.id;
+          localStorage.setItem('selectedLocation', byName.id);
+        }
       }
+
+      if (!nextLocationId && data.length > 0) {
+        nextLocationId = data[0].id;
+        localStorage.setItem('selectedLocation', nextLocationId);
+      }
+
+      if (nextLocationId) setSelectedLocation(nextLocationId);
     } catch (error) {
       console.error('Failed to load locations:', error);
     }

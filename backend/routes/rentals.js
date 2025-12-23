@@ -18,7 +18,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     const rentals = await Rental.find(query)
-      .populate('bikeId', 'name type image')
+      .populate('bikeId', 'name type image locationId')
       .populate('userId', 'name email')
       .sort({ createdAt: -1 });
 
@@ -73,10 +73,10 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Bike is not available' });
     }
 
-    // Check if user has active rental
+    // Check if user has active/confirmed rental
     const activeRental = await Rental.findOne({
       userId: req.user.userId,
-      status: 'active'
+      status: { $in: ['confirmed', 'ongoing'] },
     });
 
     if (activeRental) {
@@ -94,7 +94,7 @@ router.post('/', authenticateToken, async (req, res) => {
       bikeId,
       userId: req.user.userId,
       startTime: startTime || new Date(),
-      status: 'active'
+      status: 'ongoing'
     });
 
     await newRental.save();

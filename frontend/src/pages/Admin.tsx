@@ -90,11 +90,32 @@ export default function Admin() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const savedLocation = localStorage.getItem('selectedLocation') || '';
-      setSelectedLocationId(savedLocation);
+      const rawSavedLocation = localStorage.getItem('selectedLocation') || '';
+      let normalizedLocationId = rawSavedLocation;
+
+      try {
+        const locationsData = await locationsAPI.getAll();
+        setLocations(locationsData);
+        const ids = new Set(locationsData.map((l: any) => l.id));
+        if (normalizedLocationId && !ids.has(normalizedLocationId)) {
+          const byName = locationsData.find((l: any) => l.name === normalizedLocationId);
+          if (byName?.id) {
+            normalizedLocationId = byName.id;
+            localStorage.setItem('selectedLocation', byName.id);
+          }
+        }
+        if (!normalizedLocationId && locationsData.length > 0) {
+          normalizedLocationId = locationsData[0].id;
+          localStorage.setItem('selectedLocation', normalizedLocationId);
+        }
+      } catch {
+        setLocations([]);
+      }
+
+      setSelectedLocationId(normalizedLocationId);
       // Fetch bikes (public)
       try {
-        const bikesData = await bikesAPI.getAll(savedLocation || undefined);
+        const bikesData = await bikesAPI.getAll(normalizedLocationId || undefined);
         setBikes(bikesData);
       } catch (err) {
         setBikes([]);
@@ -119,13 +140,6 @@ export default function Admin() {
         setDocuments(docsData);
       } catch {
         setDocuments([]);
-      }
-      // Fetch locations (public)
-      try {
-        const locationsData = await locationsAPI.getAll();
-        setLocations(locationsData);
-      } catch {
-        setLocations([]);
       }
     } catch (error: any) {
       toast({
@@ -220,11 +234,11 @@ export default function Admin() {
   ];
 
   const bikesById: Record<string, BikeType> = Object.fromEntries(bikes.map(b => [b.id, b]));
-  const activeRentals = rentals.filter(r => r.status === 'active' && bikesById[r.bikeId]);
-  const activeBikeIds = new Set(activeRentals.map(r => r.bikeId));
+  const inUseRentals = rentals.filter((r) => (r.status === 'ongoing' || r.status === 'active') && bikesById[r.bikeId]);
+  const inUseBikeIds = new Set(inUseRentals.map(r => r.bikeId));
   const availableCount = bikes.filter(b => b.available).length;
-  const inUseCount = activeRentals.length;
-  const maintenanceCount = bikes.filter(b => !b.available && !activeBikeIds.has(b.id)).length;
+  const inUseCount = inUseRentals.length;
+  const maintenanceCount = bikes.filter(b => !b.available && !inUseBikeIds.has(b.id)).length;
   const stats = [
     { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero', onClick: () => setActiveTab('bikes') },
     { label: 'Available', value: availableCount, icon: Bike, color: 'bg-accent', onClick: () => setActiveTab('bikes') },
@@ -232,7 +246,16 @@ export default function Admin() {
     { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary' },
   ];
 
-  const rentalsForLocation = rentals.filter(r => bikesById[r.bikeId]);
+  const rentalsForLocation = rentals.filter((r) => {
+    const bike = bikesById[r.bikeId] || r.bike;
+    if (!bike) return true;
+    if (!selectedLocationId) return true;
+    const bikeLocationId =
+      typeof bike.locationId === 'object'
+        ? bike.locationId?.id || bike.locationId?._id || bike.locationId?.toString?.()
+        : bike.locationId;
+    return bikeLocationId ? bikeLocationId === selectedLocationId : true;
+  });
   const userIdsForLocation = new Set(rentalsForLocation.map(r => r.userId));
   const filteredUsers = users
     .filter(user => userIdsForLocation.has(user.id))
@@ -521,12 +544,12 @@ export default function Admin() {
                       <td className="px-6 py-4">{bike.kmLimit} km</td>
                       <td className="px-6 py-4">
                         <Badge variant={bike.available ? 'default' : 'secondary'} className={bike.available ? 'bg-accent text-accent-foreground' : ''}>
-                          {activeBikeIds.has(bike.id) ? 'In Use' : bike.available ? 'Available' : 'Maintenance'}
+                          {inUseBikeIds.has(bike.id) ? 'In Use' : bike.available ? 'Available' : 'Maintenance'}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {activeBikeIds.has(bike.id) ? (
+                          {inUseBikeIds.has(bike.id) ? (
                             <Badge className="bg-muted text-muted-foreground">Ride Active</Badge>
                           ) : bike.available ? (
                             <>
@@ -692,15 +715,15 @@ export default function Admin() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {rentalsForLocation.map((r) => {
-                    const bike = bikesById[r.bikeId];
-                    const user = users.find(u => u.id === r.userId);
+                    const bike = bikesById[r.bikeId] || r.bike;
+                    const user = users.find(u => u.id === r.userId) || r.user;
                     return (
                       <tr key={r.id} className="hover:bg-muted/30">
                         <td className="px-6 py-4 font-medium">#{r.id.slice(0,8)}</td>
                         <td className="px-6 py-4">{bike?.name || r.bikeId}</td>
                         <td className="px-6 py-4">{user?.name || r.userId}</td>
-                        <td className="px-6 py-4">{new Date(r.startTime).toLocaleString()}</td>
-                        <td className="px-6 py-4">{r.endTime ? new Date(r.endTime).toLocaleString() : '-'}</td>
+                        <td className="px-6 py-4">{new Date(r.pickupTime || r.startTime).toLocaleString()}</td>
+                        <td className="px-6 py-4">{r.dropoffTime || r.endTime ? new Date(r.dropoffTime || r.endTime).toLocaleString() : '-'}</td>
                         <td className="px-6 py-4">
                           <Badge className={statusStyles[r.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
                             {r.status}
@@ -708,12 +731,12 @@ export default function Admin() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            {r.status === 'active' && (
+                            {(r.status === 'ongoing' || r.status === 'active') && (
                               <Button
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    await rentalsAPI.end(r.id);
+                                    await rentalsAPI.completeRide(r.id);
                                     toast({ title: "Ride Ended", description: "Booking closed successfully." });
                                     loadData();
                                   } catch (e: any) {
@@ -722,6 +745,22 @@ export default function Admin() {
                                 }}
                               >
                                 End Ride
+                              </Button>
+                            )}
+                            {r.status === 'confirmed' && (
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await rentalsAPI.startRide(r.id);
+                                    toast({ title: "Ride Started", description: "Booking started successfully." });
+                                    loadData();
+                                  } catch (e: any) {
+                                    toast({ title: "Error", description: e.message || "Failed to start ride", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                Start Ride
                               </Button>
                             )}
                             {r.status !== 'completed' && r.status !== 'cancelled' && (
@@ -741,12 +780,6 @@ export default function Admin() {
                                 Cancel
                               </Button>
                             )}
-                            <Button variant="ghost" size="sm" disabled>
-                              Confirm
-                            </Button>
-                            <Button variant="ghost" size="sm" disabled>
-                              Start Ride
-                            </Button>
                             <Button variant="ghost" size="sm" disabled>
                               Extend
                             </Button>

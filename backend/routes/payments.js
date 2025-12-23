@@ -26,12 +26,16 @@ function generateBookingId() {
   return `RF-BK-${n}`;
 }
 
-router.get('/key', (req, res) => {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  if (!keyId) {
-    return res.status(500).json({ message: 'Payment gateway not configured' });
+router.get('/key', authenticateToken, (req, res) => {
+  try {
+    const keyId = requireEnv('RAZORPAY_KEY_ID');
+    res.json({ keyId });
+  } catch (error) {
+    const message = error?.message?.includes('RAZORPAY_KEY_')
+      ? 'Payment gateway not configured'
+      : 'Failed to load payment key';
+    res.status(500).json({ message });
   }
-  res.json({ keyId });
 });
 
 router.post('/order', authenticateToken, async (req, res) => {

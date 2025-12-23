@@ -38,16 +38,23 @@ router.get('/available', async (req, res) => {
       return res.status(400).json({ message: 'Invalid time range' });
     }
 
-    // Find rentals overlapping the requested window
-    const overlappingRentals = await Rental.find({
-      status: { $in: ['active', 'completed'] },
-      $or: [
-        { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
-        { status: 'active' }, // active rentals block availability
-      ],
-    }).select('bikeId');
+    const rentals = await Rental.find({
+      status: { $in: ['confirmed', 'ongoing'] },
+    }).select('bikeId startTime endTime pickupTime dropoffTime status');
 
-    const occupiedBikeIds = new Set(overlappingRentals.map(r => r.bikeId.toString()));
+    const occupiedBikeIds = new Set(
+      rentals
+        .filter((r) => {
+          const rentalStart = r.pickupTime || r.startTime;
+          if (!rentalStart) return false;
+
+          const rentalEnd = r.dropoffTime || r.endTime || (r.status === 'ongoing' ? new Date(8640000000000000) : null);
+          if (!rentalEnd) return rentalStart < endTime;
+
+          return rentalStart < endTime && rentalEnd > startTime;
+        })
+        .map((r) => r.bikeId.toString())
+    );
 
     const query = {};
     if (locationId) query.locationId = locationId;
