@@ -128,9 +128,17 @@ router.post('/:id/complete', authenticateToken, async (req, res) => {
   try {
     const rental = await Rental.findById(req.params.id);
     if (!rental) return res.status(404).json({ message: 'Rental not found' });
-    if (rental.status !== 'ongoing') return res.status(400).json({ message: 'Rental is not ongoing' });
+    
+    // Allow completing rides from both 'confirmed' and 'ongoing' statuses
+    if (rental.status !== 'ongoing' && rental.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Rental must be confirmed or ongoing to complete' });
+    }
 
     rental.status = 'completed';
+    rental.endTime = new Date();
+    if (!rental.dropoffTime) {
+      rental.dropoffTime = new Date();
+    }
     await rental.save();
     
     const bike = await Bike.findById(rental.bikeId);

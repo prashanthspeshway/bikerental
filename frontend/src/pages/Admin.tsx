@@ -698,6 +698,39 @@ export default function Admin() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
+                              {r.status === 'confirmed' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await rentalsAPI.startRide(r.id);
+                                        toast({ title: "Ride Started", description: "Booking started successfully." });
+                                        loadData();
+                                      } catch (e: any) {
+                                        toast({ title: "Error", description: e.message || "Failed to start ride", variant: "destructive" });
+                                      }
+                                    }}
+                                  >
+                                    Start Ride
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      try {
+                                        await rentalsAPI.completeRide(r.id);
+                                        toast({ title: "Ride Ended", description: "Booking closed successfully." });
+                                        loadData();
+                                      } catch (e: any) {
+                                        toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
+                                      }
+                                    }}
+                                  >
+                                    End Ride
+                                  </Button>
+                                </>
+                              )}
                               {(r.status === 'ongoing' || r.status === 'active') && (
                                 <Button
                                   size="sm"
@@ -712,22 +745,6 @@ export default function Admin() {
                                   }}
                                 >
                                   End Ride
-                                </Button>
-                              )}
-                              {r.status === 'confirmed' && (
-                                <Button
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await rentalsAPI.startRide(r.id);
-                                      toast({ title: "Ride Started", description: "Booking started successfully." });
-                                      loadData();
-                                    } catch (e: any) {
-                                      toast({ title: "Error", description: e.message || "Failed to start ride", variant: "destructive" });
-                                    }
-                                  }}
-                                >
-                                  Start Ride
                                 </Button>
                               )}
                               {r.status !== 'completed' && r.status !== 'cancelled' && (
