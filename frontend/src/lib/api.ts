@@ -86,6 +86,7 @@ export const rentalsAPI = {
   cancel: (id: string) => apiRequest<any>(`/rentals/${id}/cancel`, { method: 'POST' }),
   startRide: (id: string) => apiRequest<any>(`/rentals/${id}/start`, { method: 'POST' }),
   completeRide: (id: string) => apiRequest<any>(`/rentals/${id}/complete`, { method: 'POST' }),
+  delete: (id: string) => apiRequest<void>(`/rentals/${id}`, { method: 'DELETE' }),
   submitReview: (id: string, data: { rating: number; comment: string }) =>
     apiRequest<any>(`/rentals/${id}/review`, { method: 'POST', body: JSON.stringify(data) }),
 };

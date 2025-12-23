@@ -228,6 +228,24 @@ export default function Garage() {
       return;
     }
     
+    // Validate bike is in selected location
+    const selectedLocationId = localStorage.getItem('selectedLocation');
+    if (selectedLocationId) {
+      const bikeLocationId = typeof selectedBike.locationId === 'object'
+        ? (selectedBike.locationId?.id || selectedBike.locationId?._id || selectedBike.locationId?.toString?.())
+        : selectedBike.locationId;
+      
+      if (bikeLocationId !== selectedLocationId) {
+        toast({
+          title: 'Location Mismatch',
+          description: 'This bike is not available in your selected location. Please select a bike from your location.',
+          variant: 'destructive',
+        });
+        setIsBookingConfirmationOpen(false);
+        return;
+      }
+    }
+    
     // Calculate duration and amount
     const start = new Date(`${pickupDate}T${pickupTime}`);
     const end = new Date(`${dropoffDate}T${dropoffTime}`);

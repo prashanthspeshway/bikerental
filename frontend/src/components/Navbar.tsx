@@ -15,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bike, User, Menu, X, LogOut, Wallet, MapPin } from 'lucide-react';
+import { Bike, User, Menu, X, LogOut, Wallet, MapPin, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getCurrentUser, authAPI, locationsAPI } from '@/lib/api';
+import { getCurrentUser, authAPI, locationsAPI, rentalsAPI } from '@/lib/api';
 import { Location } from '@/types';
 
 export function Navbar() {
@@ -25,6 +25,7 @@ export function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [activeRide, setActiveRide] = useState<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -34,7 +35,33 @@ export function Navbar() {
     
     // Load locations
     loadLocations();
+    
+    // Load active ride if user is logged in
+    if (currentUser && !['admin', 'superadmin'].includes(currentUser.role)) {
+      loadActiveRide();
+      
+      // Refresh active ride status every 30 seconds
+      const interval = setInterval(() => {
+        loadActiveRide();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    }
   }, [location]);
+
+  const loadActiveRide = async () => {
+    try {
+      const rentals = await rentalsAPI.getAll();
+      // Only show active ride button when ride is started (ongoing/active), not when just confirmed
+      const active = rentals.find((r: any) => 
+        r.status === 'ongoing' || r.status === 'active'
+      );
+      setActiveRide(active || null);
+    } catch (error) {
+      console.error('Failed to load active ride:', error);
+      setActiveRide(null);
+    }
+  };
 
   const loadLocations = async () => {
     try {
@@ -126,6 +153,16 @@ export function Navbar() {
 
           {/* Location Selector & Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Active Ride Button */}
+            {user && activeRide && !['admin', 'superadmin'].includes(user.role) && (
+              <Link to="/active-ride">
+                <Button variant="default" size="sm" className="bg-primary">
+                  <Activity className="h-4 w-4 mr-2" />
+                  Active Ride
+                </Button>
+              </Link>
+            )}
+            
             {/* Location Selector */}
             {locations.length > 0 && (
               <Select value={selectedLocation} onValueChange={handleLocationChange}>
@@ -230,6 +267,16 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-4">
+              {/* Active Ride Button for Mobile */}
+              {user && activeRide && !['admin', 'superadmin'].includes(user.role) && (
+                <Link to="/active-ride" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="default" size="sm" className="w-full bg-primary">
+                    <Activity className="h-4 w-4 mr-2" />
+                    Active Ride
+                  </Button>
+                </Link>
+              )}
+              
               {/* Location Selector for Mobile */}
               {locations.length > 0 && (
                 <Select value={selectedLocation} onValueChange={handleLocationChange}>

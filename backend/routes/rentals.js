@@ -129,9 +129,11 @@ router.post('/:id/complete', authenticateToken, async (req, res) => {
     const rental = await Rental.findById(req.params.id);
     if (!rental) return res.status(404).json({ message: 'Rental not found' });
     
-    // Allow completing rides from both 'confirmed' and 'ongoing' statuses
-    if (rental.status !== 'ongoing' && rental.status !== 'confirmed') {
-      return res.status(400).json({ message: 'Rental must be confirmed or ongoing to complete' });
+    // Allow completing rides from 'ongoing', 'active', or 'confirmed' statuses
+    if (rental.status !== 'ongoing' && rental.status !== 'active' && rental.status !== 'confirmed') {
+      return res.status(400).json({ 
+        message: `Rental status is '${rental.status}'. Only ongoing, active, or confirmed rentals can be completed.` 
+      });
     }
 
     rental.status = 'completed';
@@ -149,6 +151,7 @@ router.post('/:id/complete', authenticateToken, async (req, res) => {
 
     res.json(rental);
   } catch (error) {
+    console.error('Complete ride error:', error);
     res.status(500).json({ message: 'Error completing ride' });
   }
 });
@@ -157,14 +160,56 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
   try {
     const rental = await Rental.findById(req.params.id);
     if (!rental) return res.status(404).json({ message: 'Rental not found' });
-    if (rental.userId.toString() !== req.user.userId) return res.status(403).json({ message: 'Access denied' });
+    
+    const currentUser = await User.findById(req.user.userId);
+    // Allow admins/superadmins to cancel any rental, users can only cancel their own
+    if (!['admin', 'superadmin'].includes(currentUser.role) && rental.userId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
     if (rental.status !== 'confirmed') return res.status(400).json({ message: 'Cannot cancel this rental' });
 
     rental.status = 'cancelled';
     await rental.save();
+    
+    // Make bike available again
+    const bike = await Bike.findById(rental.bikeId);
+    if (bike) {
+      bike.available = true;
+      await bike.save();
+    }
+    
     res.json({ message: 'Rental cancelled', rental });
   } catch (error) {
     res.status(500).json({ message: 'Error cancelling rental' });
+  }
+});
+
+// Delete rental (admin/superadmin only)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.userId);
+    if (!['admin', 'superadmin'].includes(currentUser.role)) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const rental = await Rental.findById(req.params.id);
+    if (!rental) return res.status(404).json({ message: 'Rental not found' });
+
+    // Make bike available again if rental is active
+    if (rental.status === 'ongoing' || rental.status === 'active' || rental.status === 'confirmed') {
+      const bike = await Bike.findById(rental.bikeId);
+      if (bike) {
+        bike.available = true;
+        await bike.save();
+      }
+    }
+
+    await Rental.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Rental deleted successfully' });
+  } catch (error) {
+    console.error('Delete rental error:', error);
+    res.status(500).json({ message: 'Error deleting rental' });
   }
 });
 

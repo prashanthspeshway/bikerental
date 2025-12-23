@@ -89,6 +89,29 @@ export default function Admin() {
     loadData();
   }, []);
 
+  // Auto-refresh bookings data every 10 seconds when bookings tab is active
+  useEffect(() => {
+    if (activeTab === 'bookings' && currentUser && selectedLocationId) {
+      const interval = setInterval(() => {
+        // Only refresh rentals and bikes data filtered by location
+        const refreshBookingsData = async () => {
+          try {
+            const bikesData = await bikesAPI.getAll(selectedLocationId);
+            setBikes(bikesData);
+            const rentalsData = await rentalsAPI.getAll();
+            setRentals(rentalsData);
+          } catch (error) {
+            // Silently fail on auto-refresh to avoid spam
+            console.error('Auto-refresh error:', error);
+          }
+        };
+        refreshBookingsData();
+      }, 10000); // Refresh every 10 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, currentUser, selectedLocationId]);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -115,28 +138,28 @@ export default function Admin() {
       }
 
       setSelectedLocationId(normalizedLocationId);
-      // Fetch bikes (public)
+      // Fetch bikes filtered by admin's location
       try {
         const bikesData = await bikesAPI.getAll(normalizedLocationId || undefined);
         setBikes(bikesData);
       } catch (err) {
         setBikes([]);
       }
-      // Fetch rentals (admin/user scoped)
+      // Fetch rentals (admin/user scoped) - will filter by location later
       try {
         const rentalsData = await rentalsAPI.getAll();
         setRentals(rentalsData);
       } catch {
         setRentals([]);
       }
-      // Fetch users (admin)
+      // Fetch users (admin) - will filter by location later
       try {
         const usersData = await usersAPI.getAll();
         setUsers(usersData);
       } catch (err: any) {
         setUsers([]);
       }
-      // Fetch documents (auth)
+      // Fetch documents (auth) - will filter by location later
       try {
         const docsData = await documentsAPI.getAll();
         setDocuments(docsData);
@@ -247,15 +270,16 @@ export default function Admin() {
     { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary' },
   ];
 
+  // Filter rentals by admin's location - only show rentals for bikes in admin's location
   const rentalsForLocation = rentals.filter((r) => {
     const bike = bikesById[r.bikeId] || r.bike;
-    if (!bike) return true;
-    if (!selectedLocationId) return true;
+    if (!bike) return false; // Don't show rentals if bike not found
+    if (!selectedLocationId) return false; // Don't show rentals if no location selected
     const bikeLocationId =
       typeof bike.locationId === 'object'
         ? bike.locationId?.id || bike.locationId?._id || bike.locationId?.toString?.()
         : bike.locationId;
-    return bikeLocationId ? bikeLocationId === selectedLocationId : true;
+    return bikeLocationId ? bikeLocationId === selectedLocationId : false;
   });
   const userIdsForLocation = new Set(rentalsForLocation.map(r => r.userId));
   const filteredUsers = users
@@ -269,9 +293,23 @@ export default function Admin() {
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  // For documents tab, show all documents (not filtered by location)
-  // This allows admins to see all users with documents, not just those with rentals
-  const documentsForLocation = documents;
+  // Filter documents by location - only show documents for users who have rentals in admin's location
+  const documentsForLocation = selectedLocationId
+    ? documents.filter(d => {
+        // Get user's rentals to check location
+        const userRentals = rentals.filter(r => r.userId === d.userId);
+        const userBikes = userRentals.map(r => bikes.find(b => b.id === r.bikeId)).filter(Boolean) as BikeType[];
+        return userBikes.some(b => {
+          if (!b || !b.locationId) return false;
+          // At this point, b.locationId is guaranteed to be non-null due to the check above
+          const locationId = b.locationId!;
+          const bikeLocId = typeof locationId === 'object' 
+            ? (locationId?.id || locationId?._id || String(locationId)) 
+            : String(locationId);
+          return bikeLocId === selectedLocationId;
+        });
+      })
+    : documents;
   const today = new Date().toISOString().slice(0, 10);
   const pickupsToday = rentalsForLocation.filter(r => r.startTime?.slice(0, 10) === today).length;
   const dropoffsToday = rentalsForLocation.filter(r => r.endTime && r.endTime.slice(0, 10) === today).length;
@@ -297,9 +335,19 @@ export default function Admin() {
           <div className="p-2 rounded-xl gradient-hero">
             <Bike className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
-            <span className="font-display font-bold">RideFlow</span>
-            <Badge variant="secondary" className="ml-2 text-xs">Admin</Badge>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-display font-bold">RideFlow</span>
+              <Badge variant="secondary" className="text-xs">Admin</Badge>
+            </div>
+            {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) && (
+              <div className="mt-1">
+                <Badge variant="outline" className="text-xs flex items-center gap-1 w-fit">
+                  <MapPin className="h-3 w-3" />
+                  {locations.find(loc => loc.id === selectedLocationId)?.name}
+                </Badge>
+              </div>
+            )}
           </div>
         </div>
 
@@ -521,7 +569,11 @@ export default function Admin() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-display font-bold mb-2">All Vehicles</h1>
-                <p className="text-muted-foreground">Add, edit, or remove vehicles from your fleet.</p>
+                <p className="text-muted-foreground">
+                  Add, edit, or remove vehicles from {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) 
+                    ? locations.find(loc => loc.id === selectedLocationId)?.name 
+                    : 'your location'}.
+                </p>
               </div>
               <Button
                 onClick={() => {
@@ -654,7 +706,11 @@ export default function Admin() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-display font-bold mb-2">Bookings</h1>
-              <p className="text-muted-foreground">Manage bookings in your city.</p>
+              <p className="text-muted-foreground">
+                Manage bookings in {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) 
+                  ? locations.find(loc => loc.id === selectedLocationId)?.name 
+                  : 'your location'}.
+              </p>
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
               <table className="w-full">
@@ -748,24 +804,49 @@ export default function Admin() {
                                 </Button>
                               )}
                               {r.status !== 'completed' && r.status !== 'cancelled' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await rentalsAPI.cancel(r.id);
-                                      toast({ title: "Booking Cancelled", description: "Booking cancelled successfully." });
-                                      loadData();
-                                    } catch (e: any) {
-                                      toast({ title: "Error", description: e.message || "Failed to cancel", variant: "destructive" });
-                                    }
-                                  }}
-                                >
-                                  Cancel
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await rentalsAPI.cancel(r.id);
+                                        toast({ title: "Booking Cancelled", description: "Booking cancelled successfully." });
+                                        loadData();
+                                      } catch (e: any) {
+                                        toast({ title: "Error", description: e.message || "Failed to cancel", variant: "destructive" });
+                                      }
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button variant="ghost" size="sm" disabled>
+                                    Extend
+                                  </Button>
+                                </>
+                              )}
+                              {(r.status === 'completed' || r.status === 'cancelled') && (
+                                <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
+                                  No actions available
                                 </Button>
                               )}
-                              <Button variant="ghost" size="sm" disabled>
-                                Extend
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={async () => {
+                                  if (confirm('Are you sure you want to delete this rental? This action cannot be undone.')) {
+                                    try {
+                                      await rentalsAPI.delete(r.id);
+                                      toast({ title: "Rental Deleted", description: "Rental has been deleted successfully." });
+                                      loadData();
+                                    } catch (e: any) {
+                                      toast({ title: "Error", description: e.message || "Failed to delete rental", variant: "destructive" });
+                                    }
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -784,7 +865,11 @@ export default function Admin() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-display font-bold mb-2">Users</h1>
-              <p className="text-muted-foreground">Manage registered users and their verification status.</p>
+              <p className="text-muted-foreground">
+                Manage registered users in {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) 
+                  ? locations.find(loc => loc.id === selectedLocationId)?.name 
+                  : 'your location'} and their verification status.
+              </p>
             </div>
 
             <div className="relative max-w-md">
@@ -857,7 +942,11 @@ export default function Admin() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-display font-bold mb-2">User Documents</h1>
-              <p className="text-muted-foreground">View user-submitted documents. Document verification is handled by Super Admin.</p>
+              <p className="text-muted-foreground">
+                View user-submitted documents for {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) 
+                  ? locations.find(loc => loc.id === selectedLocationId)?.name 
+                  : 'your location'}. Document verification is handled by Super Admin.
+              </p>
             </div>
 
             <div className="grid gap-4">

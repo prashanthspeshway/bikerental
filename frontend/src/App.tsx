@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Tariff from "./pages/Tariff";
 import Payment from "./pages/Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import ActiveRide from "./pages/ActiveRide";
 import { getCurrentUser } from "@/lib/api";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/tariff" element={<Tariff />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/active-ride" element={<ActiveRide />} />
           <Route path="/auth" element={<Auth />} />
           <Route
             path="/dashboard"

@@ -9,7 +9,7 @@ export interface Bike {
   available: boolean;
   description: string;
   features: string[];
-  locationId: string;
+  locationId: string | null;
   location?: {
     id: string;
     name: string;

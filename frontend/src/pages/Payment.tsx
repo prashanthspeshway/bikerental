@@ -93,6 +93,7 @@ export default function Payment() {
         order_id: order.id,
         handler: async function (response: any) {
           try {
+            const selectedLocationId = localStorage.getItem('selectedLocation') || undefined;
             const result = await paymentsAPI.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -101,7 +102,8 @@ export default function Payment() {
                 bikeId: bike.id,
                 pickupTime,
                 dropoffTime,
-                totalAmount
+                totalAmount,
+                selectedLocationId
               }
             });
             

@@ -71,9 +71,24 @@ router.post('/verify', authenticateToken, async (req, res) => {
     if (hmac !== razorpay_signature) {
       return res.status(400).json({ success: false, message: 'Signature mismatch' });
     }
-    const { bikeId, pickupTime, dropoffTime, totalAmount } = bookingDetails || {};
-    const bike = await Bike.findById(bikeId);
+    const { bikeId, pickupTime, dropoffTime, totalAmount, selectedLocationId } = bookingDetails || {};
+    const bike = await Bike.findById(bikeId).populate('locationId');
     if (!bike) return res.status(404).json({ success: false, message: 'Bike not found' });
+    
+    // Validate bike location matches selected location
+    if (selectedLocationId) {
+      const bikeLocationId = typeof bike.locationId === 'object' 
+        ? (bike.locationId?._id?.toString() || bike.locationId?.id?.toString() || bike.locationId?.toString?.())
+        : bike.locationId?.toString?.();
+      
+      if (bikeLocationId !== selectedLocationId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'This bike is not available in your selected location. Please select a bike from your location.' 
+        });
+      }
+    }
+    
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
