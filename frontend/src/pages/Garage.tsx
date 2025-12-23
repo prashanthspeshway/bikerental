@@ -9,9 +9,8 @@ import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Bike } from '@/types';
-import { Search, Filter, Zap, Gauge, Bike as BikeIcon } from 'lucide-react';
+import { Search, Zap, Gauge, Bike as BikeIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { bikesAPI, rentalsAPI, getCurrentUser } from '@/lib/api';
 
@@ -38,8 +37,6 @@ export default function Garage() {
   const [isBookingConfirmationOpen, setIsBookingConfirmationOpen] = useState(false);
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   const [sortBy, setSortBy] = useState<'relevance' | 'priceLow' | 'priceHigh'>('relevance');
-  const [isSortDialogOpen, setIsSortDialogOpen] = useState(false);
-  const [tempSort, setTempSort] = useState<'relevance' | 'priceLow' | 'priceHigh'>('relevance');
 
   useEffect(() => {
     loadBikes();
@@ -226,299 +223,229 @@ export default function Garage() {
             </p>
           </div>
 
-          {/* Filters */}
-          <div className="hidden md:block bg-card rounded-2xl p-4 md:p-6 shadow-card mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-              <div className="lg:col-span-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search bikes..."
-                    className="pl-10 w-full"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="lg:col-span-3">
-                <Label className="text-xs">Pickup</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="date"
-                    min={todayStr}
-                    value={pickupDate}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPickupDate(val < todayStr ? todayStr : val);
-                      if (dropoffDate === val && pickupTime) {
-                        const p = getDateTime(val, pickupTime);
-                        if (p) {
-                          const minDrop = new Date(p.getTime() + 30 * 60000);
-                          const currentDrop = getDateTime(dropoffDate, dropoffTime);
-                          if (!currentDrop || currentDrop.getTime() < minDrop.getTime()) {
-                            setDropoffDate(val);
-                            setDropoffTime(toHHMM(minDrop));
-                          }
-                        }
-                      }
-                    }}
-                    className="w-full"
-                  />
-                  <Select
-                    value={pickupTime || undefined}
-                    onValueChange={(val) => {
-                      let t = val;
-                      const proposed = getDateTime(pickupDate, t);
-                      if (pickupDate === todayStr && proposed && proposed.getTime() < now.getTime()) {
-                        t = nowHHMM;
-                      }
-                      setPickupTime(t);
-                      const p = getDateTime(pickupDate, t);
-                      if (p && dropoffDate === pickupDate) {
-                        const minDrop = new Date(p.getTime() + 30 * 60000);
-                        const currentDrop = getDateTime(dropoffDate, dropoffTime);
-                        if (!currentDrop || currentDrop.getTime() < minDrop.getTime()) {
-                          setDropoffDate(pickupDate);
-                          setDropoffTime(toHHMM(minDrop));
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pickupOptions.map((t) => (
-                        <SelectItem key={t} value={t}>{format12h(t)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="lg:col-span-3">
-                <Label className="text-xs">Dropoff</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="date"
-                    min={todayStr}
-                    value={dropoffDate}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDropoffDate(val < todayStr ? todayStr : val);
-                    }}
-                    className="w-full"
-                  />
-                  <Select
-                    value={dropoffTime || undefined}
-                    onValueChange={(val) => {
-                      let t = val;
-                      const proposed = getDateTime(dropoffDate, t);
-                      if (dropoffDate === todayStr && proposed && proposed.getTime() < now.getTime()) {
-                        t = nowHHMM;
-                      }
-                      if (pickupDT && dropoffDate === pickupDate) {
-                        const minDrop = new Date(pickupDT.getTime() + 30 * 60000);
-                        if (proposed && proposed.getTime() < minDrop.getTime()) {
-                          t = toHHMM(minDrop);
-                        }
-                      }
-                      setDropoffTime(t);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dropoffOptions.map((t) => (
-                        <SelectItem key={t} value={t}>{format12h(t)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="lg:col-span-2 flex items-end gap-2">
-                <Button size="sm" className="w-full" onClick={applyTimeFilter}>Apply filter</Button>
-                <div className="text-xs text-muted-foreground whitespace-nowrap">
-                  {durationMinutes ? `${durationMinutes} Minutes` : '0 Minutes'}
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <aside className="hidden md:block md:col-span-4 lg:col-span-3">
+              <div className="sticky top-28 space-y-4">
+                <div className="bg-card rounded-2xl p-4 shadow-card space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search bikes..."
+                      className="pl-10 w-full"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
 
-          {/* Sort Bar (desktop) */}
-          <div className="bg-card rounded-2xl p-3 md:p-4 shadow-card mb-6 hidden md:block">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Sort by</span>
-                <div className="relative -mx-2 w-full md:w-auto">
-                  <div className="overflow-x-auto whitespace-nowrap px-2">
-                    <ToggleGroup
-                      type="single"
-                      value={sortBy}
-                      onValueChange={(val) => setSortBy((val as typeof sortBy) || 'relevance')}
-                      className="inline-flex gap-2"
-                    >
-                      <ToggleGroupItem value="relevance" variant="outline" size="sm" className="min-w-max">
-                        Relevance
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="priceLow" variant="outline" size="sm" className="min-w-max">
-                        Price - Low to High
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="priceHigh" variant="outline" size="sm" className="min-w-max">
-                        Price - High to Low
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                  <div>
+                    <Label className="text-xs">Pickup</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="date"
+                        min={todayStr}
+                        value={pickupDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPickupDate(val < todayStr ? todayStr : val);
+                          if (dropoffDate === val && pickupTime) {
+                            const p = getDateTime(val, pickupTime);
+                            if (p) {
+                              const minDrop = new Date(p.getTime() + 30 * 60000);
+                              const currentDrop = getDateTime(dropoffDate, dropoffTime);
+                              if (!currentDrop || currentDrop.getTime() < minDrop.getTime()) {
+                                setDropoffDate(val);
+                                setDropoffTime(toHHMM(minDrop));
+                              }
+                            }
+                          }
+                        }}
+                        className="w-full"
+                      />
+                      <Select
+                        value={pickupTime || undefined}
+                        onValueChange={(val) => {
+                          let t = val;
+                          const proposed = getDateTime(pickupDate, t);
+                          if (pickupDate === todayStr && proposed && proposed.getTime() < now.getTime()) {
+                            t = nowHHMM;
+                          }
+                          setPickupTime(t);
+                          const p = getDateTime(pickupDate, t);
+                          if (p && dropoffDate === pickupDate) {
+                            const minDrop = new Date(p.getTime() + 30 * 60000);
+                            const currentDrop = getDateTime(dropoffDate, dropoffTime);
+                            if (!currentDrop || currentDrop.getTime() < minDrop.getTime()) {
+                              setDropoffDate(pickupDate);
+                              setDropoffTime(toHHMM(minDrop));
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pickupOptions.map((t) => (
+                            <SelectItem key={t} value={t}>{format12h(t)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs">Dropoff</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="date"
+                        min={todayStr}
+                        value={dropoffDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDropoffDate(val < todayStr ? todayStr : val);
+                        }}
+                        className="w-full"
+                      />
+                      <Select
+                        value={dropoffTime || undefined}
+                        onValueChange={(val) => {
+                          let t = val;
+                          const proposed = getDateTime(dropoffDate, t);
+                          if (dropoffDate === todayStr && proposed && proposed.getTime() < now.getTime()) {
+                            t = nowHHMM;
+                          }
+                          if (pickupDT && dropoffDate === pickupDate) {
+                            const minDrop = new Date(pickupDT.getTime() + 30 * 60000);
+                            if (proposed && proposed.getTime() < minDrop.getTime()) {
+                              t = toHHMM(minDrop);
+                            }
+                          }
+                          setDropoffTime(t);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dropoffOptions.map((t) => (
+                            <SelectItem key={t} value={t}>{format12h(t)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" className="flex-1" onClick={applyTimeFilter}>Apply filter</Button>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      {durationMinutes ? `${durationMinutes} Minutes` : '0 Minutes'}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="relative -mx-2 w-full md:w-auto">
-                <div className="overflow-x-auto whitespace-nowrap px-2">
-                  <ToggleGroup
-                    type="single"
-                    value={selectedType}
-                    onValueChange={(val) => setSelectedType(val || 'all')}
-                    className="inline-flex gap-2"
-                  >
-                    <ToggleGroupItem
-                      value="all"
-                      variant="default"
-                      size="sm"
-                      className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                    >
-                      All Models
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="fuel"
-                      variant="default"
-                      size="sm"
-                      className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                    >
-                      Fuel
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="electric"
-                      variant="default"
-                      size="sm"
-                      className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                    >
-                      Electric
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="scooter"
-                      variant="default"
-                      size="sm"
-                      className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                    >
-                      Scooter
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+            </aside>
+
+            <section className="md:col-span-8 lg:col-span-9">
+              <div className="bg-card rounded-2xl p-3 md:p-4 shadow-card mb-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground shrink-0">Sort by</span>
+                    <Select value={sortBy} onValueChange={(val) => setSortBy(val as typeof sortBy)}>
+                      <SelectTrigger className="w-full md:w-64">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="relevance">Relevance</SelectItem>
+                        <SelectItem value="priceLow">Price - Low to High</SelectItem>
+                        <SelectItem value="priceHigh">Price - High to Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground shrink-0">Model</span>
+                    <div className="relative -mx-2 w-full md:w-auto">
+                      <div className="overflow-x-auto whitespace-nowrap px-2">
+                        <ToggleGroup
+                          type="single"
+                          value={selectedType}
+                          onValueChange={(val) => setSelectedType(val || 'all')}
+                          className="inline-flex gap-2"
+                        >
+                          {bikeTypes.map((t) => (
+                            <ToggleGroupItem
+                              key={t.value}
+                              value={t.value}
+                              variant="default"
+                              size="sm"
+                              className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
+                            >
+                              {t.label}
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          
-
-          {/* Type Toggle (mobile) */}
-          <div className="md:hidden bg-card rounded-2xl p-3 shadow-card mb-4">
-            <div className="overflow-x-auto whitespace-nowrap">
-              <ToggleGroup
-                type="single"
-                value={selectedType}
-                onValueChange={(val) => setSelectedType(val || 'all')}
-                className="inline-flex gap-2"
-              >
-                <ToggleGroupItem
-                  value="all"
-                  variant="default"
-                  size="sm"
-                  className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                >
-                  All Models
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="fuel"
-                  variant="default"
-                  size="sm"
-                  className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                >
-                  Fuel
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="electric"
-                  variant="default"
-                  size="sm"
-                  className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                >
-                  Electric
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="scooter"
-                  variant="default"
-                  size="sm"
-                  className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
-                >
-                  Scooter
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          </div>
-
-          {/* Results Count */}
-          <div className="mb-6">
-            <p className="text-muted-foreground">
-              Showing <span className="font-semibold text-foreground">{bikesToShow.length}</span> bikes
-            </p>
-          </div>
-
-          {/* Bike Grid */}
-          {isLoading ? (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground">Loading bikes...</p>
-            </div>
-          ) : bikesToShow.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {bikesToShow.map((bike, index) => (
-                <div
-                  key={bike.id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <BikeCard 
-                    bike={bike} 
-                    onRent={handleRent}
-                    pickupDateTime={pickupDate && pickupTime ? new Date(`${pickupDate}T${pickupTime}`) : undefined}
-                    dropoffDateTime={dropoffDate && dropoffTime ? new Date(`${dropoffDate}T${dropoffTime}`) : undefined}
-                    durationHours={(() => {
-                      if (pickupDate && pickupTime && dropoffDate && dropoffTime) {
-                        const start = new Date(`${pickupDate}T${pickupTime}`);
-                        const end = new Date(`${dropoffDate}T${dropoffTime}`);
-                        return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
-                      }
-                      return 0;
-                    })()}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <Search className="h-8 w-8 text-muted-foreground" />
+              {/* Results Count */}
+              <div className="mb-6">
+                <p className="text-muted-foreground">
+                  Showing <span className="font-semibold text-foreground">{bikesToShow.length}</span> bikes
+                </p>
               </div>
-              <h3 className="font-display font-semibold text-lg mb-2">No bikes found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your filters or search query.
-              </p>
-            </div>
-          )}
+
+              {/* Bike Grid */}
+              {isLoading ? (
+                <div className="text-center py-16">
+                  <p className="text-muted-foreground">Loading bikes...</p>
+                </div>
+              ) : bikesToShow.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {bikesToShow.map((bike, index) => (
+                    <div
+                      key={bike.id}
+                      className="animate-slide-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <BikeCard 
+                        bike={bike} 
+                        onRent={handleRent}
+                        pickupDateTime={pickupDate && pickupTime ? new Date(`${pickupDate}T${pickupTime}`) : undefined}
+                        dropoffDateTime={dropoffDate && dropoffTime ? new Date(`${dropoffDate}T${dropoffTime}`) : undefined}
+                        durationHours={(() => {
+                          if (pickupDate && pickupTime && dropoffDate && dropoffTime) {
+                            const start = new Date(`${pickupDate}T${pickupTime}`);
+                            const end = new Date(`${dropoffDate}T${dropoffTime}`);
+                            return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+                          }
+                          return 0;
+                        })()}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-display font-semibold text-lg mb-2">No bikes found</h3>
+                  <p className="text-muted-foreground">
+                    Try adjusting your filters or search query.
+                  </p>
+                </div>
+              )}
+            </section>
+          </div>
 
           {/* Mobile bottom bar */}
           <div className="md:hidden fixed bottom-4 left-4 right-4 z-40">
             <div className="bg-card rounded-2xl shadow-card flex items-center justify-between px-4 py-3">
               <Button variant="ghost" size="sm" onClick={() => setIsSearchDialogOpen(true)}>FILTER</Button>
               <div className="text-xs text-muted-foreground">{durationMinutes ? `${durationMinutes} Minutes` : '0 Minutes'}</div>
-              <Button variant="ghost" size="sm" onClick={() => { setTempSort(sortBy); setIsSortDialogOpen(true); }}>SORT</Button>
             </div>
           </div>
 
@@ -630,34 +557,6 @@ export default function Garage() {
             </DialogContent>
           </Dialog>
 
-          {/* Mobile Sort Modal */}
-          <Dialog open={isSortDialogOpen} onOpenChange={setIsSortDialogOpen}>
-            <DialogContent className="max-w-xs">
-              <DialogHeader>
-                <DialogTitle>Sort by</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <RadioGroup value={tempSort} onValueChange={(val) => setTempSort(val as typeof tempSort)}>
-                  <div className="flex items-center gap-3">
-                    <RadioGroupItem value="relevance" id="sort-rel" />
-                    <Label htmlFor="sort-rel">Relevance</Label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <RadioGroupItem value="priceLow" id="sort-low" />
-                    <Label htmlFor="sort-low">Price - Low to High</Label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <RadioGroupItem value="priceHigh" id="sort-high" />
-                    <Label htmlFor="sort-high">Price - High to Low</Label>
-                  </div>
-                </RadioGroup>
-                <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setIsSortDialogOpen(false)}>Cancel</Button>
-                  <Button size="sm" onClick={() => { setSortBy(tempSort); setIsSortDialogOpen(false); }}>Apply</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </main>
 
