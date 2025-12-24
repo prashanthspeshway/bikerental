@@ -56,9 +56,7 @@ const superAdminTabIds = [
   'bikes',
   'users',
   'documents',
-  'reports',
   'settings',
-  'audit',
   'locations',
 ] as const;
 
@@ -262,9 +260,7 @@ export default function SuperAdmin() {
     { key: 'bikes', label: 'All Vehicles', icon: Bike },
     { key: 'users', label: 'Users', icon: Users },
     { key: 'documents', label: 'Documents', icon: FileText },
-    { key: 'reports', label: 'Reports', icon: FileText },
     { key: 'settings', label: 'Settings', icon: Settings },
-    { key: 'audit', label: 'Audit', icon: FileText },
     { key: 'locations', label: 'Locations', icon: MapPin },
   ];
 
@@ -296,26 +292,14 @@ export default function SuperAdmin() {
         return bike && getBikeLocationId(bike) === selectedLocationFilter;
       });
 
-  const filteredUsers = selectedLocationFilter === 'all'
-    ? users.filter((u) => 
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : (() => {
-        const userIdsFromRentals = new Set(filteredRentals.map(r => r.userId));
-        return users.filter(u => 
-          userIdsFromRentals.has(u.id) &&
-          (u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-        );
-      })();
+  // Users are global - not filtered by location
+  const filteredUsers = users.filter((u) => 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const filteredDocuments = selectedLocationFilter === 'all'
-    ? documents
-    : (() => {
-        const userIdsFromRentals = new Set(filteredRentals.map(r => r.userId));
-        return documents.filter(d => userIdsFromRentals.has(d.userId));
-      })();
+  // Documents are global - not filtered by location
+  const filteredDocuments = documents;
 
   const adminsForLocation =
     selectedLocationFilter === 'all'
@@ -437,28 +421,30 @@ export default function SuperAdmin() {
 
       {/* Main */}
       <main className="flex-1 p-6">
-        {/* Location Filter - Global for all tabs */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 text-muted-foreground" />
-            <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Filter by Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>{formatLocationDisplay(loc)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) && (
-              <Badge variant="secondary" className="ml-2">
-                {locations.find(loc => loc.id === selectedLocationFilter)?.name}
-              </Badge>
-            )}
+        {/* Location Filter - Global for all tabs except documents and users */}
+        {activeTab !== 'documents' && activeTab !== 'users' && (
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Filter by Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>{formatLocationDisplay(loc)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) && (
+                <Badge variant="secondary" className="ml-2">
+                  {formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter))}
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -467,7 +453,7 @@ export default function SuperAdmin() {
               <p className="text-muted-foreground">
                 {selectedLocationFilter === 'all' 
                   ? 'Global view across all cities and garages.' 
-                  : `View for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'selected location'}.`}
+                  : `View for ${formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) || 'selected location'}.`}
               </p>
             </div>
 
@@ -492,34 +478,6 @@ export default function SuperAdmin() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-card rounded-2xl shadow-card p-6">
-                <p className="text-sm text-muted-foreground">Revenue (Daily)</p>
-                <p className="text-2xl font-display font-bold">${revenueDaily.toFixed(2)}</p>
-              </div>
-              <div className="bg-card rounded-2xl shadow-card p-6">
-                <p className="text-sm text-muted-foreground">Revenue (Weekly)</p>
-                <p className="text-2xl font-display font-bold">${revenueWeekly.toFixed(2)}</p>
-              </div>
-              <div className="bg-card rounded-2xl shadow-card p-6">
-                <p className="text-sm text-muted-foreground">Revenue (Monthly)</p>
-                <p className="text-2xl font-display font-bold">${revenueMonthly.toFixed(2)}</p>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-card rounded-2xl shadow-card p-6">
-                <p className="text-sm text-muted-foreground">Pending Refunds</p>
-                <p className="text-2xl font-display font-bold">{alerts.pendingRefunds}</p>
-              </div>
-              <div className="bg-card rounded-2xl shadow-card p-6">
-                <p className="text-sm text-muted-foreground">Damage Reports</p>
-                <p className="text-2xl font-display font-bold">{alerts.damageReports}</p>
-              </div>
-              <div className="bg-card rounded-2xl shadow-card p-6">
-                <p className="text-sm text-muted-foreground">Admin Escalations</p>
-                <p className="text-2xl font-display font-bold">{alerts.adminEscalations}</p>
-              </div>
             </div>
           </div>
         )}
@@ -670,7 +628,7 @@ export default function SuperAdmin() {
                     <tr key={u.id}>
                       <td className="px-6 py-4">{u.name}</td>
                       <td className="px-6 py-4">{u.email}</td>
-                      <td className="px-6 py-4">{loc?.city || loc?.name || '—'}</td>
+                      <td className="px-6 py-4">{loc ? formatLocationDisplay(loc) : '—'}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <Button
@@ -969,7 +927,7 @@ export default function SuperAdmin() {
                           <p className="text-sm text-muted-foreground">
                             {selectedLocationFilter === 'all' 
                               ? 'There are no bookings yet.' 
-                              : `There are no bookings for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'this location'} yet.`}
+                              : `There are no bookings for ${formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) || 'this location'} yet.`}
                           </p>
                         </div>
                       </td>
@@ -1044,7 +1002,7 @@ export default function SuperAdmin() {
                     <p className="text-sm text-muted-foreground">
                       {selectedLocationFilter === 'all' 
                         ? 'There are no vehicles yet.' 
-                        : `There are no vehicles for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'this location'} yet.`}
+                        : `There are no vehicles for ${formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) || 'this location'} yet.`}
                     </p>
                   </div>
                 ) : (
@@ -1172,9 +1130,7 @@ export default function SuperAdmin() {
                       <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
                       <p className="text-lg font-medium text-muted-foreground mb-2">No users with documents found</p>
                       <p className="text-sm text-muted-foreground">
-                        {selectedLocationFilter === 'all' 
-                          ? 'There are no documents yet.' 
-                          : `There are no documents for ${locations.find(loc => loc.id === selectedLocationFilter)?.name || 'this location'} yet.`}
+                        There are no documents yet.
                       </p>
                     </div>
                   );
@@ -1293,32 +1249,6 @@ export default function SuperAdmin() {
           </div>
         )}
 
-        {activeTab === 'reports' && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-display font-bold mb-2">Reports & Analytics</h1>
-              <p className="text-muted-foreground">City-wise revenue and utilization.</p>
-            </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                {locations.map((loc) => {
-                  const cityBikes = bikes.filter((b) => b.locationId === loc.id);
-                  const cityRentals = rentals.filter((r) => cityBikes.some((b) => b.id === r.bikeId));
-                  const revenue = cityRentals.reduce((sum, r) => sum + (r.totalCost || 0), 0);
-                  const utilization = cityBikes.length ? Math.round((cityRentals.filter((r) => r.status === 'active').length / cityBikes.length) * 100) : 0;
-                  return (
-                    <div key={loc.id} className="border rounded-lg p-4">
-                      <p className="font-medium mb-2">{formatLocationDisplay(loc)}</p>
-                      <p className="text-sm text-muted-foreground">Revenue: ${revenue.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">Utilization: {utilization}%</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'refunds' && (
           <div className="space-y-6">
             <div>
@@ -1331,18 +1261,6 @@ export default function SuperAdmin() {
                 <Button onClick={() => toast({ title: 'Approve requires backend' })}>Approve</Button>
                 <Button variant="outline" onClick={() => toast({ title: 'Reject requires backend' })}>Reject</Button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'audit' && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-display font-bold mb-2">Audit & Compliance</h1>
-              <p className="text-muted-foreground">System logs and admin actions.</p>
-            </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="text-muted-foreground">Audit log stream not connected. Backend support required.</div>
             </div>
           </div>
         )}
@@ -1428,6 +1346,7 @@ export default function SuperAdmin() {
             </Dialog>
           </div>
         )}
+
       </main>
       <Dialog open={bikeDialogOpen} onOpenChange={setBikeDialogOpen}>
         <DialogContent className="max-w-md">

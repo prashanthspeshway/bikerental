@@ -9,6 +9,7 @@
     "seed": "node scripts/seedBikes.js",
     "seed:users": "node scripts/seedUsers.js",
     "seed:locations": "node scripts/seedLocations.js",
+    "seed:admins": "node scripts/seedAdmins.js",
     "seed:bikes": "node scripts/seedBikesWithLocations.js",
     "seed:all": "node scripts/seedLocations.js && node scripts/seedBikesWithLocations.js && node scripts/seedUsers.js",
     "migrate:bikeTypes": "node scripts/migrateBikeTypes.js"

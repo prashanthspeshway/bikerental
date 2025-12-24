@@ -31,6 +31,8 @@ export default function ActiveRide() {
   const [bike, setBike] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [extendHours, setExtendHours] = useState(1);
+  const [canEndRide, setCanEndRide] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -90,6 +92,25 @@ export default function ActiveRide() {
     }
   };
 
+  const checkCanEndRide = (rentalData: any) => {
+    if (!rentalData) return;
+    
+    const startTime = new Date(rentalData.pickupTime || rentalData.startTime);
+    const now = new Date();
+    const elapsedMs = now.getTime() - startTime.getTime();
+    const elapsedHours = elapsedMs / (1000 * 60 * 60);
+    const oneHourInMs = 60 * 60 * 1000;
+    
+    if (elapsedHours >= 1) {
+      setCanEndRide(true);
+      setTimeRemaining(0);
+    } else {
+      setCanEndRide(false);
+      const remainingMs = oneHourInMs - elapsedMs;
+      setTimeRemaining(Math.ceil(remainingMs / (1000 * 60))); // minutes remaining
+    }
+  };
+
   const calculatePrice = () => {
     if (!bike || !rental) return 0;
     
@@ -121,8 +142,22 @@ export default function ActiveRide() {
     }
   };
 
+  useEffect(() => {
+    if (!rental || (rental.status !== 'ongoing' && rental.status !== 'active')) return;
+    
+    // Check immediately
+    checkCanEndRide(rental);
+    
+    // Check every minute to update the countdown
+    const interval = setInterval(() => {
+      checkCanEndRide(rental);
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [rental]);
+
   const handleEndRide = async () => {
-    if (!rental) return;
+    if (!rental || !canEndRide) return;
     
     try {
       await rentalsAPI.completeRide(rental.id);
@@ -314,9 +349,23 @@ export default function ActiveRide() {
                       Extend Ride
                     </Button>
                   </div>
-                  <Button onClick={handleEndRide} variant="destructive" size="lg">
-                    End Ride
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <Button 
+                      onClick={handleEndRide} 
+                      variant="destructive" 
+                      size="lg"
+                      disabled={!canEndRide}
+                      className={!canEndRide ? 'opacity-50 cursor-not-allowed' : ''}
+                      title={!canEndRide ? `Please wait ${timeRemaining} more minute${timeRemaining !== 1 ? 's' : ''} before ending the ride` : 'End your ride'}
+                    >
+                      End Ride
+                    </Button>
+                    {!canEndRide && timeRemaining > 0 && (
+                      <p className="text-xs text-muted-foreground text-right">
+                        Minimum 1 hour required. {timeRemaining} minute{timeRemaining !== 1 ? 's' : ''} remaining
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
