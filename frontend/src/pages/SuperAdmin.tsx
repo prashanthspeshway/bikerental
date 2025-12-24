@@ -64,6 +64,39 @@ const superAdminTabIds = [
 
 const LAST_ADMIN_CITY_STORAGE_KEY = 'superadmin.lastAdminCity';
 
+// Helper function to format location name for display (removes "Main Garage" suffix)
+const formatLocationDisplay = (loc: any): string => {
+  if (!loc) return '';
+  let displayName = loc.name || '';
+  const city = loc.city || '';
+  
+  // Remove "Main Garage" or " - Main Garage" from the name
+  displayName = displayName.replace(/\s*-\s*Main\s+Garage/gi, '').replace(/Main\s+Garage/gi, '').trim();
+  
+  // Remove duplicate city names (e.g., "Bangalore - Bangalore" -> "Bangalore")
+  if (city) {
+    const cityLower = city.toLowerCase();
+    // Remove city name from the beginning if it's repeated
+    displayName = displayName.replace(new RegExp(`^${city}\\s*-\\s*`, 'i'), '');
+    // If what remains is just the city again, remove it
+    if (displayName.toLowerCase() === cityLower) {
+      displayName = '';
+    }
+  }
+  
+  // If location name is empty or matches city, just show city
+  if (!displayName || displayName.toLowerCase() === city.toLowerCase()) {
+    return city || displayName || '';
+  }
+  
+  // If city exists and cleaned name doesn't start with city, show city - name
+  if (city && !displayName.toLowerCase().startsWith(city.toLowerCase())) {
+    return `${city} - ${displayName}`;
+  }
+  
+  return displayName;
+};
+
 export default function SuperAdmin() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -90,7 +123,7 @@ export default function SuperAdmin() {
   const [newAdminOtherCity, setNewAdminOtherCity] = useState<string>('');
   const [editAdminOpen, setEditAdminOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
-  const [editAdminForm, setEditAdminForm] = useState({ name: '', email: '', password: '', locationId: '' });
+  const [editAdminForm, setEditAdminForm] = useState({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
   const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<any | null>(null);
   const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
@@ -415,7 +448,7 @@ export default function SuperAdmin() {
               <SelectContent>
                 <SelectItem value="all">All Locations</SelectItem>
                 {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  <SelectItem key={loc.id} value={loc.id}>{formatLocationDisplay(loc)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -649,6 +682,7 @@ export default function SuperAdmin() {
                                 name: u.name || '',
                                 email: u.email || '',
                                 password: '',
+                                confirmPassword: '',
                                 locationId: userLocationId || '',
                               });
                               setEditAdminOpen(true);
@@ -735,7 +769,7 @@ export default function SuperAdmin() {
                           .filter((loc) => String(loc.city || '').toLowerCase() === String(newAdminCity || '').toLowerCase())
                           .map((loc) => (
                             <SelectItem key={loc.id} value={loc.id}>
-                              {loc.city ? `${loc.city} - ${loc.name}` : loc.name}
+                              {formatLocationDisplay(loc)}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -767,7 +801,7 @@ export default function SuperAdmin() {
                             if (existingCityLocation?.id) {
                               locationId = existingCityLocation.id;
                             } else {
-                              const locationName = `${city} - Main Garage`;
+                              const locationName = city;
                               const createdLocation = await locationsAPI.create({
                                 name: locationName,
                                 city,
@@ -808,7 +842,11 @@ export default function SuperAdmin() {
               open={editAdminOpen}
               onOpenChange={(open) => {
                 setEditAdminOpen(open);
-                if (!open) setEditingAdmin(null);
+                if (!open) {
+                  setEditingAdmin(null);
+                  // Reset form when dialog closes
+                  setEditAdminForm({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
+                }
               }}
             >
               <DialogContent className="max-w-md">
@@ -821,16 +859,24 @@ export default function SuperAdmin() {
                   <Input placeholder="Email" value={editAdminForm.email} onChange={(e) => setEditAdminForm({ ...editAdminForm, email: e.target.value })} />
                   <Input
                     type="password"
-                    placeholder="New Password (optional)"
+                    placeholder="New Password"
                     value={editAdminForm.password}
                     onChange={(e) => setEditAdminForm({ ...editAdminForm, password: e.target.value })}
                   />
+                  {editAdminForm.password && (
+                    <Input
+                      type="password"
+                      placeholder="Confirm Password"
+                      value={editAdminForm.confirmPassword}
+                      onChange={(e) => setEditAdminForm({ ...editAdminForm, confirmPassword: e.target.value })}
+                    />
+                  )}
                   <Select value={editAdminForm.locationId} onValueChange={(v) => setEditAdminForm({ ...editAdminForm, locationId: v })}>
                     <SelectTrigger><SelectValue placeholder="Assign City/Garage" /></SelectTrigger>
                     <SelectContent>
                       {locations.map((loc) => (
                         <SelectItem key={loc.id} value={loc.id}>
-                          {loc.city ? `${loc.city} - ${loc.name}` : loc.name}
+                          {formatLocationDisplay(loc)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -845,11 +891,29 @@ export default function SuperAdmin() {
                             email: editAdminForm.email,
                             locationId: editAdminForm.locationId,
                           };
-                          if (editAdminForm.password) payload.password = editAdminForm.password;
+                          
+                          // If password is provided, validate it
+                          if (editAdminForm.password && editAdminForm.password.trim()) {
+                            if (editAdminForm.password.trim().length < 6) {
+                              toast({ title: 'Error', description: 'Password must be at least 6 characters long', variant: 'destructive' });
+                              return;
+                            }
+                            if (editAdminForm.password !== editAdminForm.confirmPassword) {
+                              toast({ title: 'Error', description: 'Passwords do not match', variant: 'destructive' });
+                              return;
+                            }
+                            payload.password = editAdminForm.password.trim();
+                          }
+                          
                           await usersAPI.update(editingAdmin.id, payload);
-                          toast({ title: 'Admin updated' });
+                          toast({ 
+                            title: 'Admin updated', 
+                            description: payload.password ? 'Password has been updated successfully' : 'Admin details updated successfully' 
+                          });
                           setEditAdminOpen(false);
                           setEditingAdmin(null);
+                          // Reset form after successful update
+                          setEditAdminForm({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
                           loadData();
                         } catch (e: any) {
                           toast({ title: 'Error', description: e.message || 'Failed to update admin', variant: 'destructive' });
@@ -863,6 +927,8 @@ export default function SuperAdmin() {
                       onClick={() => {
                         setEditAdminOpen(false);
                         setEditingAdmin(null);
+                        // Reset form when canceling
+                        setEditAdminForm({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
                       }}
                     >
                       Cancel
@@ -1242,7 +1308,7 @@ export default function SuperAdmin() {
                   const utilization = cityBikes.length ? Math.round((cityRentals.filter((r) => r.status === 'active').length / cityBikes.length) * 100) : 0;
                   return (
                     <div key={loc.id} className="border rounded-lg p-4">
-                      <p className="font-medium mb-2">{loc.name}</p>
+                      <p className="font-medium mb-2">{formatLocationDisplay(loc)}</p>
                       <p className="text-sm text-muted-foreground">Revenue: ${revenue.toFixed(2)}</p>
                       <p className="text-sm text-muted-foreground">Utilization: {utilization}%</p>
                     </div>
@@ -1289,7 +1355,7 @@ export default function SuperAdmin() {
                 <div key={loc.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">{loc.name}</p>
+                      <p className="font-medium">{formatLocationDisplay(loc)}</p>
                       <p className="text-xs text-muted-foreground">{loc.city}, {loc.state}</p>
                     </div>
                     <div className="flex gap-2">
@@ -1386,7 +1452,7 @@ export default function SuperAdmin() {
               <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
               <SelectContent>
                 {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  <SelectItem key={loc.id} value={loc.id}>{formatLocationDisplay(loc)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

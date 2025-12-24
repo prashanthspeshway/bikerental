@@ -31,3 +31,4 @@ The server will run on `http://localhost:3000`
 - `GET /api/rentals` - Get user rentals
 - And more...
 
+

@@ -135,13 +135,36 @@ router.get('/:id', authenticateToken, async (req, res) => {
       }
     }
 
+    // Update password separately if provided (before saving other fields)
     if (password) {
-      user.password = await bcrypt.hash(password, 10);
+      // Validate password length
+      if (password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+      }
+      // Ensure superadmin or admin can update passwords
+      if (!['admin', 'superadmin'].includes(currentUser.role)) {
+        return res.status(403).json({ message: 'Only admin or superadmin can update passwords' });
+      }
+      // Hash the password directly
+      const hashedPassword = await bcrypt.hash(password, 10);
+      // Use updateOne to directly update the password in the database
+      // This bypasses the pre-save hook and ensures the password is saved correctly
+      const updateResult = await User.updateOne({ _id: user._id }, { $set: { password: hashedPassword } });
+      if (updateResult.modifiedCount === 0) {
+        console.error('Password update failed - no documents modified');
+      }
     }
-
+    
+    // Save other fields
     await user.save();
+    
+    // Reload the user from database to ensure we have the latest data
+    const updatedUser = await User.findById(user._id);
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found after update' });
+    }
     // Transform _id to id for frontend compatibility
-    res.json(transformUser(user));
+    res.json(transformUser(updatedUser));
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ message: 'Error updating user' });

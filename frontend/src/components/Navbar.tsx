@@ -20,6 +20,39 @@ import { useState, useEffect } from 'react';
 import { getCurrentUser, authAPI, locationsAPI, rentalsAPI } from '@/lib/api';
 import { Location } from '@/types';
 
+// Helper function to format location name for display (removes "Main Garage" suffix)
+const formatLocationDisplay = (loc: any): string => {
+  if (!loc) return '';
+  let displayName = loc.name || '';
+  const city = loc.city || '';
+  
+  // Remove "Main Garage" or " - Main Garage" from the name
+  displayName = displayName.replace(/\s*-\s*Main\s+Garage/gi, '').replace(/Main\s+Garage/gi, '').trim();
+  
+  // Remove duplicate city names (e.g., "Bangalore - Bangalore" -> "Bangalore")
+  if (city) {
+    const cityLower = city.toLowerCase();
+    // Remove city name from the beginning if it's repeated
+    displayName = displayName.replace(new RegExp(`^${city}\\s*-\\s*`, 'i'), '');
+    // If what remains is just the city again, remove it
+    if (displayName.toLowerCase() === cityLower) {
+      displayName = '';
+    }
+  }
+  
+  // If location name is empty or matches city, just show city
+  if (!displayName || displayName.toLowerCase() === city.toLowerCase()) {
+    return city || displayName || '';
+  }
+  
+  // If city exists and cleaned name doesn't start with city, show city - name
+  if (city && !displayName.toLowerCase().startsWith(city.toLowerCase())) {
+    return `${city} - ${displayName}`;
+  }
+  
+  return displayName;
+};
+
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -177,13 +210,13 @@ export function Navbar() {
                 <SelectTrigger className="w-[150px]">
                   <MapPin className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Select location">
-                    {selectedLocationData?.name || 'Select location'}
+                    {selectedLocationData ? formatLocationDisplay(selectedLocationData) : 'Select location'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
+                      {formatLocationDisplay(loc)}
                     </SelectItem>
                   ))}
                 </SelectContent>

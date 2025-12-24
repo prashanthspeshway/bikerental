@@ -30,3 +30,4 @@ const Location = mongoose.model('Location', locationSchema);
 
 export default Location;
 
+

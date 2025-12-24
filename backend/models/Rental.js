@@ -22,3 +22,4 @@ const rentalSchema = new mongoose.Schema({
 
 export default mongoose.model('Rental', rentalSchema);
 
+

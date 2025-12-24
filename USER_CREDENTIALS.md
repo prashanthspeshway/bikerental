@@ -73,3 +73,4 @@
 - Wallet balance is displayed in dashboard
 - Rental history shows all past and active rentals
 
+
