@@ -3,8 +3,11 @@ import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import { transformUser } from '../utils/transform.js';
+import Location from '../models/Location.js';
 
 const router = express.Router();
+
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Get all users (admin only)
 router.get('/', authenticateToken, async (req, res) => {
@@ -72,7 +75,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       currentAddress,
       hotelStay,
       isVerified,
-      role
+      role,
+      locationId
     } = req.body;
 
     if (name !== undefined) user.name = name;
@@ -98,6 +102,37 @@ router.get('/:id', authenticateToken, async (req, res) => {
         return res.status(400).json({ message: 'Invalid role' });
       }
       user.role = role;
+    }
+
+    if (locationId !== undefined) {
+      if (currentUser.role !== 'superadmin') {
+        return res.status(403).json({ message: 'Only superadmin can assign location' });
+      }
+      if (locationId) {
+        const exists = await Location.findById(locationId);
+        if (!exists) {
+          return res.status(400).json({ message: 'Invalid location' });
+        }
+        const nextRole = role !== undefined ? role : user.role;
+        if (nextRole === 'admin') {
+          const cityRegex = new RegExp(`^${escapeRegex(exists.city)}$`, 'i');
+          const cityLocations = await Location.find({ city: cityRegex }).select('_id');
+          const cityLocationIds = cityLocations.map((l) => l._id);
+          if (cityLocationIds.length > 0) {
+            const otherAdmin = await User.findOne({
+              role: 'admin',
+              _id: { $ne: user._id },
+              locationId: { $in: cityLocationIds },
+            }).select('_id');
+            if (otherAdmin) {
+              return res.status(400).json({ message: 'An admin already exists for this city' });
+            }
+          }
+        }
+        user.locationId = locationId;
+      } else {
+        user.locationId = null;
+      }
     }
 
     if (password) {
@@ -144,6 +179,32 @@ router.post('/:id/wallet/topup', authenticateToken, async (req, res) => {
   }
 });
 
+// Delete user (superadmin only)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.userId);
+    if (!currentUser || currentUser.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Superadmin access required' });
+    }
+
+    if (req.params.id === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot delete current user' });
+    }
+
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ message: 'User not found' });
+    if (target.role === 'superadmin') {
+      return res.status(400).json({ message: 'Cannot delete superadmin' });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Error deleting user' });
+  }
+});
+
 // Create admin (superadmin only)
 router.post('/create-admin', authenticateToken, async (req, res) => {
   try {
@@ -151,9 +212,25 @@ router.post('/create-admin', authenticateToken, async (req, res) => {
     if (!currentUser || currentUser.role !== 'superadmin') {
       return res.status(403).json({ message: 'Superadmin access required' });
     }
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email and password are required' });
+    const { name, email, password, locationId } = req.body;
+    if (!name || !email || !password || !locationId) {
+      return res.status(400).json({ message: 'Name, email, password and location are required' });
+    }
+    const loc = await Location.findById(locationId);
+    if (!loc) {
+      return res.status(400).json({ message: 'Invalid location' });
+    }
+    const cityRegex = new RegExp(`^${escapeRegex(loc.city)}$`, 'i');
+    const cityLocations = await Location.find({ city: cityRegex }).select('_id');
+    const cityLocationIds = cityLocations.map((l) => l._id);
+    if (cityLocationIds.length > 0) {
+      const existingCityAdmin = await User.findOne({
+        role: 'admin',
+        locationId: { $in: cityLocationIds },
+      }).select('_id');
+      if (existingCityAdmin) {
+        return res.status(400).json({ message: 'An admin already exists for this city' });
+      }
     }
     const existing = await User.findOne({ email });
     if (existing) {
@@ -164,6 +241,7 @@ router.post('/create-admin', authenticateToken, async (req, res) => {
       name,
       password,
       role: 'admin',
+      locationId,
       walletBalance: 10,
       documents: [],
     });

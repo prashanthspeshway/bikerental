@@ -95,6 +95,9 @@ export const usersAPI = {
   getAll: () => apiRequest<any[]>('/users'),
   getById: (id: string) => apiRequest<any>(`/users/${id}`),
   update: (id: string, updates: any) => apiRequest<any>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
+  createAdmin: (payload: { name: string; email: string; password: string; locationId: string }) =>
+    apiRequest<any>('/users/create-admin', { method: 'POST', body: JSON.stringify(payload) }),
+  delete: (id: string) => apiRequest<any>(`/users/${id}`, { method: 'DELETE' }),
   topUpWallet: (id: string, amount: number) =>
     apiRequest<any>(`/users/${id}/wallet/topup`, { method: 'POST', body: JSON.stringify({ amount }) }),
 };

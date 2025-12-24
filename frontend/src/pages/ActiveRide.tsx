@@ -39,17 +39,21 @@ export default function ActiveRide() {
       return;
     }
 
-    loadActiveRide();
+    loadActiveRide(user);
   }, []);
 
-  const loadActiveRide = async () => {
+  const loadActiveRide = async (currentUser: any) => {
     try {
       setIsLoading(true);
       const rentals = await rentalsAPI.getAll();
       // Only show active ride when ride is started (ongoing/active), not when just confirmed
-      const active = rentals.find((r: any) => 
-        r.status === 'ongoing' || r.status === 'active'
-      );
+      const active = rentals.find((r: any) => {
+        const rentalUserId = r.userId || r.user?.id;
+        return (
+          String(rentalUserId || '') === String(currentUser?.id || '') &&
+          (r.status === 'ongoing' || r.status === 'active')
+        );
+      });
 
       if (!active) {
         toast({

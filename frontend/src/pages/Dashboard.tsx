@@ -30,7 +30,7 @@ const statusStyles = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
   const [topUpAmount, setTopUpAmount] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -70,15 +70,23 @@ export default function Dashboard() {
       navigate('/auth');
       return;
     }
-    
-    // Check for tab parameter in URL
+
+    loadUserData();
+  }, []);
+
+  useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'wallet', 'documents', 'rentalHistory'].includes(tabParam)) {
+    if (tabParam && ['overview', 'wallet', 'documents', 'history'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
-    
-    loadUserData();
   }, [searchParams]);
+
+  const setTab = (tabId: string) => {
+    setActiveTab(tabId);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tabId);
+    setSearchParams(next, { replace: true });
+  };
 
   const loadUserData = async () => {
     setIsLoading(true);
@@ -289,7 +297,7 @@ export default function Dashboard() {
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => setTab(tab.id)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                         activeTab === tab.id
                           ? 'bg-primary text-primary-foreground'

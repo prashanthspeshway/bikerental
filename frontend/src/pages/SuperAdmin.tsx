@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -47,9 +47,30 @@ const statusStyles = {
   rejected: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
 };
 
+const superAdminTabIds = [
+  'dashboard',
+  'models',
+  'admins',
+  'bookings',
+  'refunds',
+  'bikes',
+  'users',
+  'documents',
+  'reports',
+  'settings',
+  'audit',
+  'locations',
+] as const;
+
+const LAST_ADMIN_CITY_STORAGE_KEY = 'superadmin.lastAdminCity';
+
 export default function SuperAdmin() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTabParam = new URLSearchParams(window.location.search).get('tab') || '';
+  const [activeTab, setActiveTab] = useState(
+    superAdminTabIds.includes(initialTabParam as any) ? initialTabParam : 'dashboard'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [bikes, setBikes] = useState<BikeType[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -64,7 +85,12 @@ export default function SuperAdmin() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
-  const [newAdminForm, setNewAdminForm] = useState({ name: '', email: '', password: '', locationId: '' });
+  const [newAdminForm, setNewAdminForm] = useState({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
+  const [newAdminCity, setNewAdminCity] = useState<string>('');
+  const [newAdminOtherCity, setNewAdminOtherCity] = useState<string>('');
+  const [editAdminOpen, setEditAdminOpen] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
+  const [editAdminForm, setEditAdminForm] = useState({ name: '', email: '', password: '', locationId: '' });
   const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<any | null>(null);
   const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
@@ -72,6 +98,53 @@ export default function SuperAdmin() {
   const [editingLocation, setEditingLocation] = useState<any | null>(null);
   const [locationForm, setLocationForm] = useState<any>({ name: '', city: '', state: '', country: '' });
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>('all');
+
+  const setTab = (tabId: string) => {
+    setActiveTab(tabId);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tabId);
+    setSearchParams(next, { replace: true });
+  };
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && superAdminTabIds.includes(tabParam as any) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!createAdminOpen) return;
+    if (locations.length === 0) return;
+    const cityOptions = Array.from(new Set(locations.map((l) => l.city).filter(Boolean)));
+    const savedCityRaw = localStorage.getItem(LAST_ADMIN_CITY_STORAGE_KEY) || '';
+    const savedCity = savedCityRaw.trim();
+    const matchedSavedCity = savedCity
+      ? cityOptions.find((c) => String(c).toLowerCase() === savedCity.toLowerCase())
+      : null;
+    const goaLoc =
+      locations.find((l) => String(l.city || '').toLowerCase() === 'goa') ||
+      locations.find((l) => String(l.name || '').toLowerCase().includes('goa')) ||
+      null;
+    const goaCity = goaLoc?.city || (goaLoc?.name ? 'Goa' : '') || 'Goa';
+    setNewAdminCity((prev) => prev || matchedSavedCity || goaCity);
+    setNewAdminOtherCity('');
+  }, [createAdminOpen, locations]);
+
+  useEffect(() => {
+    if (!createAdminOpen) return;
+    if (!newAdminCity) return;
+    if (newAdminCity === '__other__') {
+      setNewAdminForm((prev) => ({ ...prev, locationId: '' }));
+      return;
+    }
+    const locationsForCity = locations.filter(
+      (l) => String(l.city || '').toLowerCase() === String(newAdminCity || '').toLowerCase()
+    );
+    if (locationsForCity.length > 0) {
+      setNewAdminForm((prev) => ({ ...prev, locationId: prev.locationId || locationsForCity[0].id }));
+    }
+  }, [createAdminOpen, newAdminCity, locations]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -102,8 +175,32 @@ export default function SuperAdmin() {
         locationsAPI.getAll(),
         rentalsAPI.getAll(),
       ]);
+      const normalizeUserLocationId = (user: any) => {
+        if (typeof user?.locationId === 'object') {
+          return user.locationId?.id || user.locationId?._id || user.locationId?.toString?.();
+        }
+        return user?.locationId;
+      };
+
+      const goaLoc =
+        locationsData.find((l: any) => String(l.city || '').toLowerCase() === 'goa') ||
+        locationsData.find((l: any) => String(l.name || '').toLowerCase().includes('goa')) ||
+        null;
+
+      if (goaLoc) {
+        const adminsMissingLocation = usersData.filter(
+          (u: any) => u.role === 'admin' && !normalizeUserLocationId(u)
+        );
+        if (adminsMissingLocation.length > 0) {
+          await Promise.allSettled(
+            adminsMissingLocation.map((u: any) => usersAPI.update(u.id, { locationId: goaLoc.id }))
+          );
+        }
+      }
+
+      const finalUsers = goaLoc ? await usersAPI.getAll() : usersData;
       setBikes(bikesData);
-      setUsers(usersData);
+      setUsers(finalUsers);
       setDocuments(docsData);
       setLocations(locationsData);
       setRentals(rentalsData);
@@ -126,8 +223,6 @@ export default function SuperAdmin() {
   const tabs = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'models', label: 'Vehicles', icon: Bike },
-    { key: 'pricing', label: 'Pricing', icon: DollarSign },
-    { key: 'allocation', label: 'Allocation', icon: MapPin },
     { key: 'admins', label: 'Admins', icon: Shield },
     { key: 'bookings', label: 'Bookings', icon: Calendar },
     { key: 'refunds', label: 'Refunds', icon: DollarSign },
@@ -146,6 +241,13 @@ export default function SuperAdmin() {
       return bike.locationId?.id || bike.locationId?._id || bike.locationId?.toString?.();
     }
     return bike.locationId;
+  };
+
+  const getUserLocationId = (user: any) => {
+    if (typeof user.locationId === 'object') {
+      return user.locationId?.id || user.locationId?._id || user.locationId?.toString?.();
+    }
+    return user.locationId;
   };
 
   const filteredBikes = selectedLocationFilter === 'all' 
@@ -181,6 +283,26 @@ export default function SuperAdmin() {
         const userIdsFromRentals = new Set(filteredRentals.map(r => r.userId));
         return documents.filter(d => userIdsFromRentals.has(d.userId));
       })();
+
+  const adminsForLocation =
+    selectedLocationFilter === 'all'
+      ? users.filter((u) => u.role === 'admin')
+      : users.filter((u) => u.role === 'admin' && getUserLocationId(u) === selectedLocationFilter);
+
+  const adminCitySet = new Set(
+    users
+      .filter((u) => u.role === 'admin')
+      .map((u) => {
+        const userLocationId = getUserLocationId(u);
+        const loc = locations.find((l) => l.id === userLocationId);
+        return String(loc?.city || '').toLowerCase();
+      })
+      .filter(Boolean)
+  );
+
+  const cityOptions = Array.from(new Set(locations.map((l) => l.city).filter(Boolean))).sort((a, b) =>
+    String(a).localeCompare(String(b))
+  );
 
   const handleDocumentAction = async (docId: string, action: 'approve' | 'reject') => {
     try {
@@ -260,7 +382,7 @@ export default function SuperAdmin() {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => setTab(tab.key)}
               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 ${
                 activeTab === tab.key ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
               }`}
@@ -479,69 +601,6 @@ export default function SuperAdmin() {
           </div>
         )}
 
-        {activeTab === 'pricing' && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-display font-bold mb-2">Pricing & Tariffs</h1>
-              <p className="text-muted-foreground">Define pricing rules city-wise or model-wise.</p>
-            </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <Input placeholder="Hourly Price" />
-                <Input placeholder="Minimum Booking Hours" />
-                <Input placeholder="Weekend Pricing %" />
-                <Select>
-                  <SelectTrigger><SelectValue placeholder="Plan Duration" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7">7 Days</SelectItem>
-                    <SelectItem value="15">15 Days</SelectItem>
-                    <SelectItem value="30">30 Days</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input placeholder="KM Limit" />
-                <Input placeholder="Excess KM Charge" />
-                <Input placeholder="Deposit Amount" />
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={() => toast({ title: 'Save requires backend' })}>Save</Button>
-                <Button variant="outline" onClick={() => toast({ title: 'Apply requires backend' })}>Apply</Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'allocation' && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-display font-bold mb-2">Fleet Allocation</h1>
-              <p className="text-muted-foreground">Allocate inventory across cities and garages.</p>
-            </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                {locations.map((loc) => {
-                  const count = bikes.filter((b) => b.locationId === loc.id).length;
-                  return (
-                    <div key={loc.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-medium">{loc.name}</p>
-                          <p className="text-xs text-muted-foreground">{loc.city}, {loc.state}</p>
-                        </div>
-                        <Badge variant="secondary">{count} bikes</Badge>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => toast({ title: 'Increase requires backend' })}>Increase</Button>
-                        <Button size="sm" variant="outline" onClick={() => toast({ title: 'Decrease requires backend' })}>Decrease</Button>
-                        <Button size="sm" variant="secondary" onClick={() => toast({ title: 'Transfer requires backend' })}>Transfer</Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'admins' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -549,7 +608,16 @@ export default function SuperAdmin() {
                 <h1 className="text-2xl font-display font-bold mb-2">Admins</h1>
                 <p className="text-muted-foreground">Create and manage admin accounts.</p>
               </div>
-              <Button onClick={() => setCreateAdminOpen(true)}>Create Admin</Button>
+              <Button
+                onClick={() => {
+                  setNewAdminForm({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
+                  setNewAdminCity('');
+                  setNewAdminOtherCity('');
+                  setCreateAdminOpen(true);
+                }}
+              >
+                Create Admin
+              </Button>
             </div>
             <div className="bg-card rounded-2xl shadow-card p-6">
               <table className="w-full">
@@ -558,20 +626,60 @@ export default function SuperAdmin() {
                     <th className="text-left px-6 py-4 font-medium">Name</th>
                     <th className="text-left px-6 py-4 font-medium">Email</th>
                     <th className="text-left px-6 py-4 font-medium">City</th>
-                    <th className="text-left px-6 py-4 font-medium">Status</th>
+                    <th className="text-left px-6 py-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {users.filter((u) => u.role === 'admin').map((u) => (
+                  {adminsForLocation.map((u) => {
+                    const userLocationId = getUserLocationId(u);
+                    const loc = locations.find((l) => l.id === userLocationId);
+                    return (
                     <tr key={u.id}>
                       <td className="px-6 py-4">{u.name}</td>
                       <td className="px-6 py-4">{u.email}</td>
-                      <td className="px-6 py-4">—</td>
+                      <td className="px-6 py-4">{loc?.city || loc?.name || '—'}</td>
                       <td className="px-6 py-4">
-                        <Badge variant="secondary">Active</Badge>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingAdmin(u);
+                              setEditAdminForm({
+                                name: u.name || '',
+                                email: u.email || '',
+                                password: '',
+                                locationId: userLocationId || '',
+                              });
+                              setEditAdminOpen(true);
+                            }}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
+                              const ok = window.confirm('Delete this admin? This cannot be undone.');
+                              if (!ok) return;
+                              try {
+                                await usersAPI.delete(u.id);
+                                toast({ title: 'Admin deleted' });
+                                loadData();
+                              } catch (e: any) {
+                                toast({ title: 'Error', description: e.message || 'Failed to delete admin', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -585,31 +693,103 @@ export default function SuperAdmin() {
                   <Input placeholder="Full Name" value={newAdminForm.name} onChange={(e) => setNewAdminForm({ ...newAdminForm, name: e.target.value })} />
                   <Input placeholder="Email" value={newAdminForm.email} onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })} />
                   <Input type="password" placeholder="Password" value={newAdminForm.password} onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })} />
-                  <Select value={newAdminForm.locationId} onValueChange={(v) => setNewAdminForm({ ...newAdminForm, locationId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Assign City/Garage" /></SelectTrigger>
+                  <Input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={newAdminForm.confirmPassword}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, confirmPassword: e.target.value })}
+                  />
+                  <Select
+                    value={newAdminCity}
+                    onValueChange={(v) => {
+                      setNewAdminCity(v);
+                      setNewAdminOtherCity('');
+                      setNewAdminForm((prev) => ({ ...prev, locationId: '' }));
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="City" /></SelectTrigger>
                     <SelectContent>
-                      {locations.map((loc) => (
-                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      {cityOptions.map((city) => (
+                        <SelectItem
+                          key={city as string}
+                          value={city as string}
+                          disabled={adminCitySet.has(String(city).toLowerCase())}
+                        >
+                          {city as string}
+                        </SelectItem>
                       ))}
+                      <SelectItem value="__other__">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                  {newAdminCity === '__other__' ? (
+                    <Input
+                      placeholder="New City"
+                      value={newAdminOtherCity}
+                      onChange={(e) => setNewAdminOtherCity(e.target.value)}
+                    />
+                  ) : (
+                    <Select value={newAdminForm.locationId} onValueChange={(v) => setNewAdminForm({ ...newAdminForm, locationId: v })}>
+                      <SelectTrigger><SelectValue placeholder="Garage" /></SelectTrigger>
+                      <SelectContent>
+                        {locations
+                          .filter((loc) => String(loc.city || '').toLowerCase() === String(newAdminCity || '').toLowerCase())
+                          .map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>
+                              {loc.city ? `${loc.city} - ${loc.name}` : loc.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       onClick={async () => {
                         try {
-                          const base = import.meta.env.VITE_API_URL || '/api';
-                          const token = localStorage.getItem('authToken') || '';
-                          const res = await fetch(`${base}/users/create-admin`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                            body: JSON.stringify({ email: newAdminForm.email, password: newAdminForm.password, name: newAdminForm.name }),
-                          });
-                          if (!res.ok) {
-                            const err = await res.json().catch(() => ({ message: 'Registration failed' }));
-                            throw new Error(err.message || `HTTP error! status: ${res.status}`);
+                          if (!newAdminForm.name || !newAdminForm.email || !newAdminForm.password) {
+                            throw new Error('Name, email, and password are required');
                           }
+                          if (newAdminForm.password !== newAdminForm.confirmPassword) {
+                            throw new Error('Passwords do not match');
+                          }
+                          const targetCityRaw =
+                            newAdminCity === '__other__' ? newAdminOtherCity.trim() : String(newAdminCity || '').trim();
+                          if (!targetCityRaw) throw new Error('City is required');
+                          const targetCity = targetCityRaw.toLowerCase();
+                          if (adminCitySet.has(targetCity)) {
+                            throw new Error('An admin already exists for this city');
+                          }
+                          let locationId = newAdminForm.locationId;
+                          if (newAdminCity === '__other__') {
+                            const city = newAdminOtherCity.trim();
+                            const existingCityLocation = locations.find(
+                              (l) => String(l.city || '').toLowerCase() === city.toLowerCase()
+                            );
+                            if (existingCityLocation?.id) {
+                              locationId = existingCityLocation.id;
+                            } else {
+                              const locationName = `${city} - Main Garage`;
+                              const createdLocation = await locationsAPI.create({
+                                name: locationName,
+                                city,
+                                state: city,
+                                country: 'India',
+                              });
+                              locationId = createdLocation?.id;
+                            }
+                            if (!locationId) throw new Error('Failed to create city');
+                          }
+                          if (!locationId) throw new Error('City/Garage is required');
+                          await usersAPI.createAdmin({
+                            name: newAdminForm.name,
+                            email: newAdminForm.email,
+                            password: newAdminForm.password,
+                            locationId,
+                          });
+                          localStorage.setItem(LAST_ADMIN_CITY_STORAGE_KEY, targetCityRaw);
                           toast({ title: 'Admin Created', description: 'New admin has been created' });
                           setCreateAdminOpen(false);
+                          setNewAdminCity('');
+                          setNewAdminOtherCity('');
                           loadData();
                         } catch (e: any) {
                           toast({ title: 'Error', description: e.message || 'Failed to create admin', variant: 'destructive' });
@@ -619,6 +799,74 @@ export default function SuperAdmin() {
                       Create
                     </Button>
                     <Button variant="outline" onClick={() => setCreateAdminOpen(false)}>Cancel</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={editAdminOpen}
+              onOpenChange={(open) => {
+                setEditAdminOpen(open);
+                if (!open) setEditingAdmin(null);
+              }}
+            >
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Edit Admin</DialogTitle>
+                  <DialogDescription>Update admin account details.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Input placeholder="Full Name" value={editAdminForm.name} onChange={(e) => setEditAdminForm({ ...editAdminForm, name: e.target.value })} />
+                  <Input placeholder="Email" value={editAdminForm.email} onChange={(e) => setEditAdminForm({ ...editAdminForm, email: e.target.value })} />
+                  <Input
+                    type="password"
+                    placeholder="New Password (optional)"
+                    value={editAdminForm.password}
+                    onChange={(e) => setEditAdminForm({ ...editAdminForm, password: e.target.value })}
+                  />
+                  <Select value={editAdminForm.locationId} onValueChange={(v) => setEditAdminForm({ ...editAdminForm, locationId: v })}>
+                    <SelectTrigger><SelectValue placeholder="Assign City/Garage" /></SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.city ? `${loc.city} - ${loc.name}` : loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={async () => {
+                        if (!editingAdmin) return;
+                        try {
+                          const payload: any = {
+                            name: editAdminForm.name,
+                            email: editAdminForm.email,
+                            locationId: editAdminForm.locationId,
+                          };
+                          if (editAdminForm.password) payload.password = editAdminForm.password;
+                          await usersAPI.update(editingAdmin.id, payload);
+                          toast({ title: 'Admin updated' });
+                          setEditAdminOpen(false);
+                          setEditingAdmin(null);
+                          loadData();
+                        } catch (e: any) {
+                          toast({ title: 'Error', description: e.message || 'Failed to update admin', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditAdminOpen(false);
+                        setEditingAdmin(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               </DialogContent>

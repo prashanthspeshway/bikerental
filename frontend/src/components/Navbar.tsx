@@ -38,24 +38,28 @@ export function Navbar() {
     
     // Load active ride if user is logged in
     if (currentUser && !['admin', 'superadmin'].includes(currentUser.role)) {
-      loadActiveRide();
+      loadActiveRide(currentUser);
       
       // Refresh active ride status every 30 seconds
       const interval = setInterval(() => {
-        loadActiveRide();
+        loadActiveRide(currentUser);
       }, 30000);
       
       return () => clearInterval(interval);
     }
   }, [location]);
 
-  const loadActiveRide = async () => {
+  const loadActiveRide = async (currentUser: any) => {
     try {
       const rentals = await rentalsAPI.getAll();
       // Only show active ride button when ride is started (ongoing/active), not when just confirmed
-      const active = rentals.find((r: any) => 
-        r.status === 'ongoing' || r.status === 'active'
-      );
+      const active = rentals.find((r: any) => {
+        const rentalUserId = r.userId || r.user?.id;
+        return (
+          String(rentalUserId || '') === String(currentUser?.id || '') &&
+          (r.status === 'ongoing' || r.status === 'active')
+        );
+      });
       setActiveRide(active || null);
     } catch (error) {
       console.error('Failed to load active ride:', error);
@@ -156,9 +160,13 @@ export function Navbar() {
             {/* Active Ride Button */}
             {user && activeRide && !['admin', 'superadmin'].includes(user.role) && (
               <Link to="/active-ride">
-                <Button variant="default" size="sm" className="bg-primary">
+                <Button variant="default" size="sm" className="bg-primary relative">
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                  </span>
                   <Activity className="h-4 w-4 mr-2" />
-                  Active Ride
+                  Ongoing Ride
                 </Button>
               </Link>
             )}
@@ -270,9 +278,13 @@ export function Navbar() {
               {/* Active Ride Button for Mobile */}
               {user && activeRide && !['admin', 'superadmin'].includes(user.role) && (
                 <Link to="/active-ride" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="default" size="sm" className="w-full bg-primary">
+                  <Button variant="default" size="sm" className="w-full bg-primary relative">
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                    </span>
                     <Activity className="h-4 w-4 mr-2" />
-                    Active Ride
+                    Ongoing Ride
                   </Button>
                 </Link>
               )}

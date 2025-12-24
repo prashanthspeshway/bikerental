@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -46,9 +46,15 @@ const statusStyles = {
   rejected: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
 };
 
+const adminTabIds = ['dashboard', 'bikes', 'allVehicles', 'bookings', 'users', 'documents', 'settings'] as const;
+
 export default function Admin() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTabParam = new URLSearchParams(window.location.search).get('tab') || '';
+  const [activeTab, setActiveTab] = useState(
+    adminTabIds.includes(initialTabParam as any) ? initialTabParam : 'dashboard'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [bikes, setBikes] = useState<BikeType[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -69,6 +75,20 @@ export default function Admin() {
   const [brandSearch, setBrandSearch] = useState('');
   const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
   const [allVehiclesSearchQuery, setAllVehiclesSearchQuery] = useState('');
+
+  const setTab = (tabId: string) => {
+    setActiveTab(tabId);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tabId);
+    setSearchParams(next, { replace: true });
+  };
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && adminTabIds.includes(tabParam as any) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -115,13 +135,23 @@ export default function Admin() {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      const current = getCurrentUser();
+      const assignedLocationId =
+        typeof current?.locationId === 'object'
+          ? current.locationId?.id || current.locationId?._id || current.locationId?.toString?.()
+          : current?.locationId;
+
       const rawSavedLocation = localStorage.getItem('selectedLocation') || '';
-      let normalizedLocationId = rawSavedLocation;
+      let normalizedLocationId = assignedLocationId || rawSavedLocation;
 
       try {
         const locationsData = await locationsAPI.getAll();
         setLocations(locationsData);
         const ids = new Set(locationsData.map((l: any) => l.id));
+        if (assignedLocationId && ids.has(assignedLocationId)) {
+          normalizedLocationId = assignedLocationId;
+          localStorage.setItem('selectedLocation', assignedLocationId);
+        }
         if (normalizedLocationId && !ids.has(normalizedLocationId)) {
           const byName = locationsData.find((l: any) => l.name === normalizedLocationId);
           if (byName?.id) {
@@ -264,9 +294,9 @@ export default function Admin() {
   const inUseCount = inUseRentals.length;
   const maintenanceCount = bikes.filter(b => !b.available && !inUseBikeIds.has(b.id)).length;
   const stats = [
-    { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero', onClick: () => setActiveTab('bikes') },
-    { label: 'Available', value: availableCount, icon: Bike, color: 'bg-accent', onClick: () => setActiveTab('bikes') },
-    { label: 'In Use', value: inUseCount, icon: Bike, color: 'bg-primary', onClick: () => setActiveTab('bookings') },
+    { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero', onClick: () => setTab('bikes') },
+    { label: 'Available', value: availableCount, icon: Bike, color: 'bg-accent', onClick: () => setTab('bikes') },
+    { label: 'In Use', value: inUseCount, icon: Bike, color: 'bg-primary', onClick: () => setTab('bookings') },
     { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary' },
   ];
 
@@ -301,11 +331,11 @@ export default function Admin() {
         const userBikes = userRentals.map(r => bikes.find(b => b.id === r.bikeId)).filter(Boolean) as BikeType[];
         return userBikes.some(b => {
           if (!b || !b.locationId) return false;
-          // At this point, b.locationId is guaranteed to be non-null due to the check above
-          const locationId = b.locationId!;
-          const bikeLocId = typeof locationId === 'object' 
-            ? (locationId?.id || locationId?._id || String(locationId)) 
-            : String(locationId);
+          const locationId: any = b.locationId;
+          const bikeLocId =
+            locationId && typeof locationId === 'object'
+              ? String(locationId.id || locationId._id || locationId)
+              : String(locationId);
           return bikeLocId === selectedLocationId;
         });
       })
@@ -357,7 +387,7 @@ export default function Admin() {
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id);
+                setTab(tab.id);
                 if (tab.id === 'users') setUserStatusFilter('all');
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${

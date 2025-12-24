@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
   currentAddress: { type: String, default: '' },
   hotelStay: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin', 'superadmin'], default: 'user' },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', default: null },
   walletBalance: { type: Number, default: 10 },
   isVerified: { type: Boolean, default: false },
   documents: [documentSchema],

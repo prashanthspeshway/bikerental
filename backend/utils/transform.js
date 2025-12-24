@@ -37,6 +37,7 @@ export function transformUser(user) {
     currentAddress: userObj.currentAddress || '',
     hotelStay: userObj.hotelStay || '',
     role: userObj.role,
+    locationId: userObj.locationId?._id?.toString() || userObj.locationId?.toString() || userObj.locationId || null,
     walletBalance: userObj.walletBalance,
     isVerified: userObj.isVerified || false,
     documents: userObj.documents || [],
