@@ -926,8 +926,8 @@ export default function Admin() {
                   <tr>
                     <th className="text-left px-6 py-4 font-medium">User</th>
                     <th className="text-left px-6 py-4 font-medium">Role</th>
-                    <th className="text-left px-6 py-4 font-medium">Wallet</th>
                     <th className="text-left px-6 py-4 font-medium">Documents</th>
+                    <th className="text-left px-6 py-4 font-medium">Status</th>
                     <th className="text-left px-6 py-4 font-medium">Joined</th>
                     <th className="text-left px-6 py-4 font-medium">Actions</th>
                   </tr>
@@ -950,7 +950,6 @@ export default function Admin() {
                             {user.role}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4">${user.walletBalance?.toFixed(2) || '0.00'}</td>
                         <td className="px-6 py-4">{docCount}</td>
                         <td className="px-6 py-4">
                           <Badge className={statusStyles[status as keyof typeof statusStyles].color}>

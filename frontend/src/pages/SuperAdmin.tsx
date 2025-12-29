@@ -14,6 +14,7 @@ import {
   Clock,
   Eye,
   LogOut,
+  Menu,
   LayoutDashboard,
   DollarSign,
   Plus,
@@ -38,6 +39,7 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const statusStyles = {
   verified: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
@@ -383,9 +385,9 @@ export default function SuperAdmin() {
   }
 
   return (
-    <div className="h-screen bg-background flex overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border p-4 flex flex-col h-screen overflow-y-auto">
+      <aside className="hidden md:flex w-64 bg-card border-r border-border p-4 flex-col h-screen overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="p-2 rounded-xl gradient-hero">
@@ -423,14 +425,71 @@ export default function SuperAdmin() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+        <div className="md:hidden mb-4 flex items-center justify-between gap-3">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl gradient-hero">
+                    <Bike className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <span className="font-display font-bold">RideFlow</span>
+                    <Badge variant="secondary" className="ml-2 text-xs">Super Admin</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-2">
+                <nav className="space-y-1">
+                  {tabs.map((tab) => (
+                    <SheetClose asChild key={tab.key}>
+                      <button
+                        onClick={() => setTab(tab.key)}
+                        className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 ${
+                          activeTab === tab.key ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <tab.icon className="h-4 w-4" />
+                        {tab.label}
+                      </button>
+                    </SheetClose>
+                  ))}
+                </nav>
+              </div>
+
+              <div className="mt-auto p-4 border-t border-border">
+                <SheetClose asChild>
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="min-w-0">
+            <p className="font-display font-semibold truncate">Super Admin</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {tabs.find((t) => t.key === activeTab)?.label}
+            </p>
+          </div>
+        </div>
+
         {/* Location Filter - Global for all tabs except documents and users */}
         {activeTab !== 'documents' && activeTab !== 'users' && (
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
               <MapPin className="h-5 w-5 text-muted-foreground" />
               <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-                <SelectTrigger className="w-64">
+                <SelectTrigger className="w-full md:w-64">
                   <SelectValue placeholder="Filter by Location" />
                 </SelectTrigger>
                 <SelectContent>
@@ -441,7 +500,7 @@ export default function SuperAdmin() {
                 </SelectContent>
               </Select>
               {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) && (
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="md:ml-2">
                   {formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter))}
                 </Badge>
               )}
@@ -487,7 +546,7 @@ export default function SuperAdmin() {
 
         {activeTab === 'models' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-display font-bold mb-2">Vehicles</h1>
                 <p className="text-muted-foreground">
@@ -497,6 +556,7 @@ export default function SuperAdmin() {
                 </p>
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingBike(null);
                   setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
@@ -509,8 +569,8 @@ export default function SuperAdmin() {
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
               <div className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex flex-1 items-center gap-2">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <Input 
                       placeholder="Search vehicles..." 
@@ -519,7 +579,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <Select value={selectedBrandFilter} onValueChange={setSelectedBrandFilter}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-full sm:w-48">
                       <SelectValue placeholder="Filter by Brand" />
                     </SelectTrigger>
                     <SelectContent>
@@ -533,7 +593,7 @@ export default function SuperAdmin() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 p-4">
+              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredBikes
                   .filter((bike) => {
                     const matchesSearch = allVehiclesSearchQuery === '' || 
@@ -546,7 +606,7 @@ export default function SuperAdmin() {
                   .map((bike) => (
                   <div key={bike.id} className="border rounded-lg p-3 flex flex-col bg-card h-full min-w-0">
                     {bike.image && (
-                      <div className="relative mb-2 h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <div className="relative mb-2 h-40 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0 sm:h-48">
                         <img 
                           src={bike.image} 
                           alt={bike.name} 
@@ -557,7 +617,7 @@ export default function SuperAdmin() {
                       </div>
                     )}
                     {!bike.image && (
-                      <div className="relative mb-2 bg-muted rounded-md h-48 flex items-center justify-center flex-shrink-0">
+                      <div className="relative mb-2 bg-muted rounded-md h-40 flex items-center justify-center flex-shrink-0 sm:h-48">
                         <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
                         <Bike className="h-12 w-12 text-muted-foreground/50" />
                       </div>
@@ -565,7 +625,7 @@ export default function SuperAdmin() {
                     <div className="flex-1 flex flex-col min-w-0">
                       <p className="font-medium mb-1 truncate">{bike.name}</p>
                       {bike.brand && <p className="text-xs text-muted-foreground mb-2 truncate">Brand: {bike.brand}</p>}
-                      <div className="mt-auto flex items-center justify-between pt-2 gap-2">
+                      <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm font-semibold text-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
                         <div className="flex gap-1 flex-shrink-0">
                           <Button
@@ -927,65 +987,67 @@ export default function SuperAdmin() {
               <p className="text-muted-foreground">Oversight across all cities.</p>
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left px-6 py-4 font-medium">Booking</th>
-                    <th className="text-left px-6 py-4 font-medium">Bike</th>
-                    <th className="text-left px-6 py-4 font-medium">User</th>
-                    <th className="text-left px-6 py-4 font-medium">Start</th>
-                    <th className="text-left px-6 py-4 font-medium">End</th>
-                    <th className="text-left px-6 py-4 font-medium">Status</th>
-                    <th className="text-left px-6 py-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredRentals.length === 0 ? (
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-[900px]">
+                  <thead className="bg-muted/50">
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                          <p className="text-lg font-medium text-muted-foreground mb-2">No bookings found</p>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedLocationFilter === 'all' 
-                              ? 'There are no bookings yet.' 
-                              : `There are no bookings for ${formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) || 'this location'} yet.`}
-                          </p>
-                        </div>
-                      </td>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Booking</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Bike</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">User</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Start</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">End</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Status</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Actions</th>
                     </tr>
-                  ) : (
-                    filteredRentals.map((r) => {
-                      const bike = filteredBikes.find((b) => b.id === r.bikeId) || bikes.find((b) => b.id === r.bikeId);
-                      const user = filteredUsers.find((u) => u.id === r.userId) || users.find((u) => u.id === r.userId);
-                    return (
-                      <tr key={r.id}>
-                        <td className="px-6 py-4">#{r.id.slice(0,8)}</td>
-                        <td className="px-6 py-4">{bike?.name || r.bikeId}</td>
-                        <td className="px-6 py-4">{user?.name || r.userId}</td>
-                        <td className="px-6 py-4">{new Date(r.startTime).toLocaleString()}</td>
-                        <td className="px-6 py-4">{r.endTime ? new Date(r.endTime).toLocaleString() : '-'}</td>
-                        <td className="px-6 py-4">
-                          <Badge className={statusStyles[r.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
-                            {r.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            {r.status === 'active' && (
-                              <Button size="sm" onClick={async () => { try { await rentalsAPI.end(r.id); toast({ title: 'Ride Closed' }); loadData(); } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); } }}>Force Close</Button>
-                            )}
-                            {r.status !== 'completed' && r.status !== 'cancelled' && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await rentalsAPI.cancel(r.id); toast({ title: 'Booking Cancelled' }); loadData(); } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); } }}>Cancel</Button>
-                            )}
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredRentals.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                            <p className="text-lg font-medium text-muted-foreground mb-2">No bookings found</p>
+                            <p className="text-sm text-muted-foreground">
+                              {selectedLocationFilter === 'all' 
+                                ? 'There are no bookings yet.' 
+                                : `There are no bookings for ${formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) || 'this location'} yet.`}
+                            </p>
                           </div>
                         </td>
                       </tr>
-                    );
-                    })
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredRentals.map((r) => {
+                        const bike = filteredBikes.find((b) => b.id === r.bikeId) || bikes.find((b) => b.id === r.bikeId);
+                        const user = filteredUsers.find((u) => u.id === r.userId) || users.find((u) => u.id === r.userId);
+                      return (
+                        <tr key={r.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">#{r.id.slice(0,8)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{bike?.name || r.bikeId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{user?.name || r.userId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{new Date(r.startTime).toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{r.endTime ? new Date(r.endTime).toLocaleString() : '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge className={statusStyles[r.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                              {r.status}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex gap-2">
+                              {r.status === 'active' && (
+                                <Button size="sm" onClick={async () => { try { await rentalsAPI.end(r.id); toast({ title: 'Ride Closed' }); loadData(); } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); } }}>Force Close</Button>
+                              )}
+                              {r.status !== 'completed' && r.status !== 'cancelled' && (
+                                <Button size="sm" variant="outline" onClick={async () => { try { await rentalsAPI.cancel(r.id); toast({ title: 'Booking Cancelled' }); loadData(); } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); } }}>Cancel</Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -1103,7 +1165,6 @@ export default function SuperAdmin() {
                   <tr>
                     <th className="text-left px-6 py-4 font-medium">User</th>
                     <th className="text-left px-6 py-4 font-medium">Role</th>
-                    <th className="text-left px-6 py-4 font-medium">Wallet</th>
                     <th className="text-left px-6 py-4 font-medium">Joined</th>
                   </tr>
                 </thead>
@@ -1121,7 +1182,6 @@ export default function SuperAdmin() {
                           {user.role}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4">${user.walletBalance?.toFixed(2) || '0.00'}</td>
                       <td className="px-6 py-4 text-muted-foreground">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>

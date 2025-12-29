@@ -231,12 +231,12 @@ export default function Garage() {
     // Validate bike is in selected location
     const selectedLocationId = localStorage.getItem('selectedLocation');
     if (selectedLocationId) {
-      const rawBikeLocationId = selectedBike.locationId;
+      const rawBikeLocationId: unknown = (selectedBike as any).locationId;
       const bikeLocationId =
-        typeof rawBikeLocationId === 'string'
-          ? rawBikeLocationId
-          : rawBikeLocationId && typeof rawBikeLocationId === 'object'
-            ? (rawBikeLocationId.id || rawBikeLocationId._id || rawBikeLocationId.toString?.())
+        typeof rawBikeLocationId === 'object' && rawBikeLocationId
+          ? (rawBikeLocationId as any).id || (rawBikeLocationId as any)._id || (rawBikeLocationId as any).toString?.()
+          : typeof rawBikeLocationId === 'string'
+            ? rawBikeLocationId
             : null;
       
       if (bikeLocationId !== selectedLocationId) {
