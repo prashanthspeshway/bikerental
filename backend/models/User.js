@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
   familyContact: { type: String, default: '' },
   permanentAddress: { type: String, default: '' },
   currentAddress: { type: String, default: '' },
+  currentLocationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', default: null },
   hotelStay: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin', 'superadmin'], default: 'user' },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', default: null },

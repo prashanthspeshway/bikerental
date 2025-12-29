@@ -1175,9 +1175,29 @@ export default function SuperAdmin() {
                           <div>
                             <p className="font-semibold text-lg">{user.name}</p>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
-                            {user.mobile && (
-                              <p className="text-sm text-muted-foreground">{user.mobile}</p>
-                            )}
+                            <p className="text-sm text-muted-foreground">{user.mobile || '-'}</p>
+                            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Emergency Contact: </span>
+                                <span className="text-foreground">{user.emergencyContact || '-'}</span>
+                              </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Family Contact: </span>
+                                <span className="text-foreground">{user.familyContact || '-'}</span>
+                              </p>
+                              <p className="text-sm md:col-span-2">
+                                <span className="text-muted-foreground">Permanent Address: </span>
+                                <span className="text-foreground">{user.permanentAddress || '-'}</span>
+                              </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Current Location: </span>
+                                <span className="text-foreground">{user.currentAddress || '-'}</span>
+                              </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Hotel Stay: </span>
+                                <span className="text-foreground">{user.hotelStay || '-'}</span>
+                              </p>
+                            </div>
                           </div>
                         </div>
                         <Button 
@@ -1482,12 +1502,10 @@ export default function SuperAdmin() {
                     <p className="text-sm text-muted-foreground">Email</p>
                     <p className="font-medium">{selectedDocumentUser.email}</p>
                   </div>
-                  {selectedDocumentUser.mobile && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mobile</p>
-                      <p className="font-medium">{selectedDocumentUser.mobile}</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Mobile</p>
+                    <p className="font-medium">{selectedDocumentUser.mobile || '-'}</p>
+                  </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
                     {selectedDocumentUser.isVerified ? (
@@ -1501,6 +1519,26 @@ export default function SuperAdmin() {
                         Unverified
                       </Badge>
                     )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Emergency Contact</p>
+                    <p className="font-medium">{selectedDocumentUser.emergencyContact || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Family Contact</p>
+                    <p className="font-medium">{selectedDocumentUser.familyContact || '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">Permanent Address</p>
+                    <p className="font-medium">{selectedDocumentUser.permanentAddress || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Location</p>
+                    <p className="font-medium">{selectedDocumentUser.currentAddress || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Hotel Stay</p>
+                    <p className="font-medium">{selectedDocumentUser.hotelStay || '-'}</p>
                   </div>
                 </div>
               </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Wallet,
   FileText,
@@ -20,12 +21,38 @@ import {
   Bike,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { usersAPI, rentalsAPI, documentsAPI, getCurrentUser, authAPI } from '@/lib/api';
+import { usersAPI, rentalsAPI, documentsAPI, getCurrentUser, authAPI, locationsAPI } from '@/lib/api';
 
 const statusStyles = {
   approved: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
   pending: { color: 'bg-primary/10 text-primary', icon: Clock },
   rejected: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
+};
+
+const formatLocationDisplay = (loc: any): string => {
+  if (!loc) return '';
+  let displayName = loc.name || '';
+  const city = loc.city || '';
+
+  displayName = displayName.replace(/\s*-\s*Main\s+Garage/gi, '').replace(/Main\s+Garage/gi, '').trim();
+
+  if (city) {
+    const cityLower = city.toLowerCase();
+    displayName = displayName.replace(new RegExp(`^${city}\\s*-\\s*`, 'i'), '');
+    if (displayName.toLowerCase() === cityLower) {
+      displayName = '';
+    }
+  }
+
+  if (!displayName || displayName.toLowerCase() === city.toLowerCase()) {
+    return city || displayName || '';
+  }
+
+  if (city && !displayName.toLowerCase().startsWith(city.toLowerCase())) {
+    return `${city} - ${displayName}`;
+  }
+
+  return displayName;
 };
 
 export default function Dashboard() {
@@ -34,6 +61,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [topUpAmount, setTopUpAmount] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [locations, setLocations] = useState<any[]>([]);
   const [rentals, setRentals] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +73,7 @@ export default function Dashboard() {
     familyContact: '',
     permanentAddress: '',
     currentAddress: '',
+    currentLocationId: '',
     hotelStay: '',
   });
   const [documentFiles, setDocumentFiles] = useState({
@@ -72,6 +101,7 @@ export default function Dashboard() {
     }
 
     loadUserData();
+    loadLocations();
   }, []);
 
   useEffect(() => {
@@ -108,6 +138,7 @@ export default function Dashboard() {
           familyContact: userData.familyContact || '',
           permanentAddress: userData.permanentAddress || '',
           currentAddress: userData.currentAddress || '',
+          currentLocationId: userData.currentLocationId || '',
           hotelStay: userData.hotelStay || '',
         });
       } catch (err: any) {
@@ -135,6 +166,15 @@ export default function Dashboard() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const data = await locationsAPI.getAll();
+      setLocations(Array.isArray(data) ? data : []);
+    } catch {
+      setLocations([]);
     }
   };
 
@@ -185,6 +225,7 @@ export default function Dashboard() {
         familyContact: formData.familyContact,
         permanentAddress: formData.permanentAddress,
         currentAddress: formData.currentAddress,
+        currentLocationId: formData.currentLocationId || null,
         hotelStay: formData.hotelStay,
       });
       toast({
@@ -567,13 +608,32 @@ export default function Dashboard() {
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="currentAddress">Current Address</Label>
-                      <Input
-                        id="currentAddress"
-                        value={formData.currentAddress}
-                        onChange={(e) => setFormData(prev => ({ ...prev, currentAddress: e.target.value }))}
-                        placeholder="Enter your current address"
-                      />
+                      <Label htmlFor="currentLocation">Current Location</Label>
+                      <Select
+                        value={formData.currentLocationId}
+                        onValueChange={(value) => {
+                          const selected = locations.find((l) => l?.id === value);
+                          setFormData((prev) => ({
+                            ...prev,
+                            currentLocationId: value,
+                            currentAddress: selected ? formatLocationDisplay(selected) : prev.currentAddress,
+                          }));
+                        }}
+                      >
+                        <SelectTrigger id="currentLocation">
+                          <SelectValue placeholder="Select your current location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations
+                            .slice()
+                            .sort((a, b) => formatLocationDisplay(a).localeCompare(formatLocationDisplay(b)))
+                            .map((loc) => (
+                              <SelectItem key={loc.id} value={loc.id}>
+                                {formatLocationDisplay(loc)}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="hotelStay">Hotel Stay</Label>
@@ -860,25 +920,58 @@ export default function Dashboard() {
                     {rentals.length > 0 ? (
                       rentals.map((rental) => {
                         const StatusIcon = statusStyles[rental.status as keyof typeof statusStyles]?.icon || Clock;
-                        const bikeName = rental.bikeId?.name || 'Unknown Bike';
+                        const bike = rental.bike || (typeof rental.bikeId === 'object' ? rental.bikeId : null);
+                        const bikeName = bike?.name || 'Unknown Bike';
+                        const bikeImage = bike?.image || '';
                         const bookingId = rental.bookingId || rental.id.slice(0, 8);
                         
                         return (
                           <div key={rental.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-muted/50 gap-4">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                                <Bike className="h-5 w-5 text-secondary-foreground" />
+                                {bikeImage ? (
+                                  <img
+                                    src={bikeImage}
+                                    alt={bikeName}
+                                    className="w-10 h-10 rounded-lg object-cover"
+                                  />
+                                ) : (
+                                  <Bike className="h-5 w-5 text-secondary-foreground" />
+                                )}
                               </div>
                               <div>
                                 <p className="font-medium">{bikeName}</p>
                                 <p className="text-xs text-muted-foreground font-mono">ID: {bookingId}</p>
                                 <div className="text-sm text-muted-foreground mt-1">
                                   <p>Pickup: {new Date(rental.pickupTime || rental.startTime).toLocaleString()}</p>
-                                  {rental.dropoffTime && <p>Dropoff: {new Date(rental.dropoffTime).toLocaleString()}</p>}
+                                  {(rental.dropoffTime || rental.endTime) && (
+                                    <p>Dropoff: {new Date(rental.dropoffTime || rental.endTime).toLocaleString()}</p>
+                                  )}
+                                  {(bike?.brand || bike?.type) && (
+                                    <p>
+                                      {bike?.brand ? `${bike.brand} ` : ''}
+                                      {bike?.type ? String(bike.type).toUpperCase() : ''}
+                                    </p>
+                                  )}
+                                  {(bike?.pricePerHour || bike?.kmLimit) && (
+                                    <p>
+                                      {bike?.pricePerHour ? `₹${bike.pricePerHour}/hr` : ''}
+                                      {bike?.pricePerHour && bike?.kmLimit ? ' • ' : ''}
+                                      {bike?.kmLimit ? `${bike.kmLimit} km limit` : ''}
+                                    </p>
+                                  )}
+                                  {bike?.location?.city && (
+                                    <p>Location: {bike.location.city}{bike.location.name ? ` - ${bike.location.name}` : ''}</p>
+                                  )}
                                 </div>
-                                {rental.totalAmount && (
-                                  <p className="text-sm font-medium mt-1">Total: ₹{rental.totalAmount}</p>
-                                )}
+                                <p className="text-sm font-medium mt-1">
+                                  Total: ₹{rental.totalAmount ?? rental.totalCost ?? 0}
+                                  {rental.paymentStatus ? (
+                                    <span className="text-xs font-normal text-muted-foreground">
+                                      {' '}• Payment: {String(rental.paymentStatus).toUpperCase()}
+                                    </span>
+                                  ) : null}
+                                </p>
                               </div>
                             </div>
                             

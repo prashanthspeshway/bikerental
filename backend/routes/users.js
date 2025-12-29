@@ -73,6 +73,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       familyContact,
       permanentAddress,
       currentAddress,
+      currentLocationId,
       hotelStay,
       isVerified,
       role,
@@ -86,6 +87,17 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (familyContact !== undefined) user.familyContact = familyContact;
     if (permanentAddress !== undefined) user.permanentAddress = permanentAddress;
     if (currentAddress !== undefined) user.currentAddress = currentAddress;
+    if (currentLocationId !== undefined) {
+      if (currentLocationId) {
+        const exists = await Location.findById(currentLocationId).select('_id');
+        if (!exists) {
+          return res.status(400).json({ message: 'Invalid current location' });
+        }
+        user.currentLocationId = currentLocationId;
+      } else {
+        user.currentLocationId = null;
+      }
+    }
     if (hotelStay !== undefined) user.hotelStay = hotelStay;
     if (walletBalance !== undefined && ['admin', 'superadmin'].includes(currentUser.role)) {
       user.walletBalance = parseFloat(walletBalance);

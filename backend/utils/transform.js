@@ -35,6 +35,7 @@ export function transformUser(user) {
     familyContact: userObj.familyContact || '',
     permanentAddress: userObj.permanentAddress || '',
     currentAddress: userObj.currentAddress || '',
+    currentLocationId: userObj.currentLocationId?._id?.toString() || userObj.currentLocationId?.toString() || userObj.currentLocationId || null,
     hotelStay: userObj.hotelStay || '',
     role: userObj.role,
     locationId: userObj.locationId?._id?.toString() || userObj.locationId?.toString() || userObj.locationId || null,

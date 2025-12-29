@@ -356,21 +356,17 @@ export default function Admin() {
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  // Filter documents by location - only show documents for users who have rentals in admin's location
+  const userById: Record<string, any> = Object.fromEntries(users.map((u) => [u.id, u]));
+  const selectedCity = String(locations.find((l) => l.id === selectedLocationId)?.city || '').trim().toLowerCase();
   const documentsForLocation = selectedLocationId
-    ? documents.filter(d => {
-        // Get user's rentals to check location
-        const userRentals = rentals.filter(r => r.userId === d.userId);
-        const userBikes = userRentals.map(r => bikes.find(b => b.id === r.bikeId)).filter(Boolean) as BikeType[];
-        return userBikes.some(b => {
-          if (!b || !b.locationId) return false;
-          const locationId: any = b.locationId;
-          const bikeLocId =
-            locationId && typeof locationId === 'object'
-              ? String(locationId.id || locationId._id || locationId)
-              : String(locationId);
-          return bikeLocId === selectedLocationId;
-        });
+    ? documents.filter((d) => {
+        const docUser = userById[d.userId];
+        if (!docUser) return false;
+        const docUserLocationId = String(docUser.currentLocationId || '').trim();
+        if (docUserLocationId && docUserLocationId === selectedLocationId) return true;
+        if (!selectedCity) return false;
+        const currentAddress = String(docUser.currentAddress || '').trim().toLowerCase();
+        return currentAddress === selectedCity || currentAddress.startsWith(`${selectedCity} -`);
       })
     : documents;
   const today = new Date().toISOString().slice(0, 10);
@@ -834,41 +830,6 @@ export default function Admin() {
                                     Start Ride
                                   </Button>
                                   <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={async () => {
-                                      try {
-                                        await rentalsAPI.completeRide(r.id);
-                                        toast({ title: "Ride Ended", description: "Booking closed successfully." });
-                                        loadData();
-                                      } catch (e: any) {
-                                        toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
-                                      }
-                                    }}
-                                  >
-                                    End Ride
-                                  </Button>
-                                </>
-                              )}
-                              {(r.status === 'ongoing' || r.status === 'active') && (
-                                <Button
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await rentalsAPI.completeRide(r.id);
-                                      toast({ title: "Ride Ended", description: "Booking closed successfully." });
-                                      loadData();
-                                    } catch (e: any) {
-                                      toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
-                                    }
-                                  }}
-                                >
-                                  End Ride
-                                </Button>
-                              )}
-                              {r.status !== 'completed' && r.status !== 'cancelled' && (
-                                <>
-                                  <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={async () => {
@@ -883,10 +844,24 @@ export default function Admin() {
                                   >
                                     Cancel
                                   </Button>
-                                  <Button variant="ghost" size="sm" disabled>
-                                    Extend
-                                  </Button>
                                 </>
+                              )}
+                              {(r.status === 'ongoing' || r.status === 'active') && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      await rentalsAPI.completeRide(r.id);
+                                      toast({ title: "Ride Ended", description: "Booking closed successfully." });
+                                      loadData();
+                                    } catch (e: any) {
+                                      toast({ title: "Error", description: e.message || "Failed to end ride", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  End Ride
+                                </Button>
                               )}
                               {(r.status === 'completed' || r.status === 'cancelled') && (
                                 <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
@@ -1046,9 +1021,29 @@ export default function Admin() {
                           <div>
                             <p className="font-semibold text-lg">{user.name}</p>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
-                            {user.mobile && (
-                              <p className="text-sm text-muted-foreground">{user.mobile}</p>
-                            )}
+                            <p className="text-sm text-muted-foreground">{user.mobile || '-'}</p>
+                            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Emergency Contact: </span>
+                                <span className="text-foreground">{user.emergencyContact || '-'}</span>
+                              </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Family Contact: </span>
+                                <span className="text-foreground">{user.familyContact || '-'}</span>
+                              </p>
+                              <p className="text-sm md:col-span-2">
+                                <span className="text-muted-foreground">Permanent Address: </span>
+                                <span className="text-foreground">{user.permanentAddress || '-'}</span>
+                              </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Current Location: </span>
+                                <span className="text-foreground">{user.currentAddress || '-'}</span>
+                              </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Hotel Stay: </span>
+                                <span className="text-foreground">{user.hotelStay || '-'}</span>
+                              </p>
+                            </div>
                           </div>
                         </div>
                         <Button 
@@ -1356,12 +1351,10 @@ export default function Admin() {
                     <p className="text-sm text-muted-foreground">Email</p>
                     <p className="font-medium">{selectedDocumentUser.email}</p>
                   </div>
-                  {selectedDocumentUser.mobile && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mobile</p>
-                      <p className="font-medium">{selectedDocumentUser.mobile}</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Mobile</p>
+                    <p className="font-medium">{selectedDocumentUser.mobile || '-'}</p>
+                  </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
                     {selectedDocumentUser.isVerified ? (
@@ -1375,6 +1368,26 @@ export default function Admin() {
                         Unverified
                       </Badge>
                     )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Emergency Contact</p>
+                    <p className="font-medium">{selectedDocumentUser.emergencyContact || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Family Contact</p>
+                    <p className="font-medium">{selectedDocumentUser.familyContact || '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">Permanent Address</p>
+                    <p className="font-medium">{selectedDocumentUser.permanentAddress || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Location</p>
+                    <p className="font-medium">{selectedDocumentUser.currentAddress || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Hotel Stay</p>
+                    <p className="font-medium">{selectedDocumentUser.hotelStay || '-'}</p>
                   </div>
                 </div>
               </div>

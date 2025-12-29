@@ -18,7 +18,11 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     const rentals = await Rental.find(query)
-      .populate('bikeId', 'name type image locationId')
+      .populate({
+        path: 'bikeId',
+        select: 'name type brand image pricePerHour kmLimit locationId',
+        populate: { path: 'locationId', select: 'name city state' },
+      })
       .populate('userId', 'name email')
       .sort({ createdAt: -1 });
 
@@ -35,7 +39,10 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const rental = await Rental.findById(req.params.id)
-      .populate('bikeId')
+      .populate({
+        path: 'bikeId',
+        populate: { path: 'locationId', select: 'name city state' },
+      })
       .populate('userId', 'name email');
 
     if (!rental) {
