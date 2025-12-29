@@ -390,9 +390,9 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border p-4 flex flex-col">
+      <aside className="w-64 bg-card border-r border-border p-4 flex flex-col h-screen overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="p-2 rounded-xl gradient-hero">
@@ -449,7 +449,7 @@ export default function Admin() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 p-8 overflow-y-auto">
         {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8">

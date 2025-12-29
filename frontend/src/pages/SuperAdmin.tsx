@@ -109,6 +109,8 @@ export default function SuperAdmin() {
   const [locations, setLocations] = useState<any[]>([]);
   const [rentals, setRentals] = useState<any[]>([]);
   const [brandSearch, setBrandSearch] = useState('');
+  const [allVehiclesSearchQuery, setAllVehiclesSearchQuery] = useState('');
+  const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedDocumentUser, setSelectedDocumentUser] = useState<any>(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -380,9 +382,9 @@ export default function SuperAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border p-4 flex flex-col">
+      <aside className="w-64 bg-card border-r border-border p-4 flex flex-col h-screen overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="p-2 rounded-xl gradient-hero">
@@ -420,7 +422,7 @@ export default function SuperAdmin() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 overflow-y-auto">
         {/* Location Filter - Global for all tabs except documents and users */}
         {activeTab !== 'documents' && activeTab !== 'users' && (
           <div className="mb-6 flex items-center justify-between">
@@ -487,7 +489,11 @@ export default function SuperAdmin() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-display font-bold mb-2">Vehicles</h1>
-                <p className="text-muted-foreground">Browse vehicles grouped by brand.</p>
+                <p className="text-muted-foreground">
+                  Add, edit, or remove vehicles from {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) 
+                    ? formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) 
+                    : 'all locations'}.
+                </p>
               </div>
               <Button
                 onClick={() => {
@@ -500,94 +506,109 @@ export default function SuperAdmin() {
                 Add Vehicle
               </Button>
             </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <div className="p-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search brands..." value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)} />
+            <div className="bg-card rounded-2xl shadow-card overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search vehicles..." 
+                      value={allVehiclesSearchQuery}
+                      onChange={(e) => setAllVehiclesSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Select value={selectedBrandFilter} onValueChange={setSelectedBrandFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filter by Brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Brands</SelectItem>
+                      {Array.from(new Set(filteredBikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
+                        .sort()
+                        .map((brand) => (
+                          <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              {Array.from(new Set(filteredBikes.map((b) => ((b.brand || '').trim() || 'Unbranded'))))
-                .filter((brand) => brand.toLowerCase().includes(brandSearch.toLowerCase()))
-                .map((brand) => {
-                  const brandBikes = filteredBikes.filter((b) => (((b.brand || '').trim() || 'Unbranded')) === brand);
-                  return (
-                    <div key={brand} className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <h2 className="font-display font-semibold text-lg">{brand}</h2>
-                        <Badge variant="secondary">{brandBikes.length} vehicles</Badge>
+              <div className="grid grid-cols-3 gap-4 p-4">
+                {filteredBikes
+                  .filter((bike) => {
+                    const matchesSearch = allVehiclesSearchQuery === '' || 
+                      bike.name.toLowerCase().includes(allVehiclesSearchQuery.toLowerCase()) ||
+                      (bike.brand && bike.brand.toLowerCase().includes(allVehiclesSearchQuery.toLowerCase()));
+                    const matchesBrand = selectedBrandFilter === 'all' || 
+                      ((bike.brand || '').trim() || 'Unbranded') === selectedBrandFilter;
+                    return matchesSearch && matchesBrand;
+                  })
+                  .map((bike) => (
+                  <div key={bike.id} className="border rounded-lg p-3 flex flex-col bg-card h-full min-w-0">
+                    {bike.image && (
+                      <div className="relative mb-2 h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
+                        <img 
+                          src={bike.image} 
+                          alt={bike.name} 
+                          className="max-w-full max-h-full object-contain rounded-md"
+                          style={{ imageRendering: 'auto' as const }}
+                        />
+                        <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
                       </div>
-                      {(['fuel','electric','scooter'] as const).map((t) => {
-                        const typeBikes = brandBikes.filter((b) => b.type === t);
-                        if (!typeBikes.length) return null;
-                        const typeLabel = t.charAt(0).toUpperCase() + t.slice(1);
-                        return (
-                          <div key={`${brand}-${t}`} className="mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="font-display font-medium">{typeLabel}</h3>
-                              <Badge variant="secondary">{typeBikes.length} {typeLabel.toLowerCase()}</Badge>
-                            </div>
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {typeBikes.map((bike) => (
-                                <div key={bike.id} className="border rounded-lg p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="font-medium">{bike.name}</p>
-                                    <Badge variant="secondary">{bike.type}</Badge>
-                                  </div>
-                                  {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {(bike.brand || '').trim() || 'Unbranded'}</p>}
-                                  {bike.image && (
-                                    <img src={bike.image} alt={bike.name} className="w-full h-32 object-cover rounded-md mb-2" />
-                                  )}
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">${bike.pricePerHour}/hr</p>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setEditingBike(bike);
-                                          setBikeForm({
-                                            name: bike.name,
-                                            brand: bike.brand || '',
-                                            type: bike.type,
-                                            pricePerHour: String(bike.pricePerHour),
-                                            kmLimit: String(bike.kmLimit),
-                                            locationId: bike.locationId,
-                                            image: bike.image || '',
-                                          });
-                                          setBikeDialogOpen(true);
-                                        }}
-                                      >
-                                        <Edit className="h-3 w-3 mr-1" />
-                                        Edit
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={async () => {
-                                          try {
-                                            await bikesAPI.delete(bike.id);
-                                            toast({ title: 'Vehicle deleted' });
-                                            loadData();
-                                          } catch (e: any) {
-                                            toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
-                                          }
-                                        }}
-                                      >
-                                        <Trash2 className="h-3 w-3 mr-1" />
-                                        Delete
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    )}
+                    {!bike.image && (
+                      <div className="relative mb-2 bg-muted rounded-md h-48 flex items-center justify-center flex-shrink-0">
+                        <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
+                        <Bike className="h-12 w-12 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <p className="font-medium mb-1 truncate">{bike.name}</p>
+                      {bike.brand && <p className="text-xs text-muted-foreground mb-2 truncate">Brand: {bike.brand}</p>}
+                      <div className="mt-auto flex items-center justify-between pt-2 gap-2">
+                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              setEditingBike(bike);
+                              setBikeForm({
+                                name: bike.name,
+                                brand: bike.brand || '',
+                                type: bike.type,
+                                pricePerHour: String(bike.pricePerHour),
+                                kmLimit: String(bike.kmLimit),
+                                locationId: bike.locationId,
+                                image: bike.image || '',
+                              });
+                              setBikeDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 px-2 text-xs"
+                            onClick={async () => {
+                              try {
+                                await bikesAPI.delete(bike.id);
+                                toast({ title: 'Vehicle deleted' });
+                                loadData();
+                              } catch (e: any) {
+                                toast({ title: 'Error', description: e.message || 'Failed to delete vehicle', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                  ))}
+              </div>
             </div>
           </div>
         )}
