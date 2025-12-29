@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bike, User, Menu, X, LogOut, Wallet, MapPin, Activity } from 'lucide-react';
+import { Bike, User, Menu, X, LogOut, MapPin, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getCurrentUser, authAPI, locationsAPI, rentalsAPI } from '@/lib/api';
 import { Location } from '@/types';
@@ -261,10 +261,6 @@ export function Navbar() {
                         <User className="h-4 w-4 mr-2" />
                         Dashboard
                       </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="flex items-center">
-                      <Wallet className="h-4 w-4 mr-2" />
-                      Wallet: ${user.walletBalance?.toFixed(2) || '0.00'}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">

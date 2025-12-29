@@ -103,6 +103,7 @@ export default function SuperAdmin() {
     superAdminTabIds.includes(initialTabParam as any) ? initialTabParam : 'dashboard'
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [documentsSearchQuery, setDocumentsSearchQuery] = useState('');
   const [bikes, setBikes] = useState<BikeType[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
@@ -1139,13 +1140,67 @@ export default function SuperAdmin() {
               <p className="text-muted-foreground">Review and approve user-submitted documents grouped by user.</p>
             </div>
 
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Search users or document type..."
+                className="pl-10"
+                value={documentsSearchQuery}
+                onChange={(e) => setDocumentsSearchQuery(e.target.value)}
+              />
+            </div>
+
             <div className="grid gap-4">
               {(() => {
                 // Get unique users who have documents
                 const userIdsWithDocs = new Set(filteredDocuments.map(d => d.userId));
-                const usersWithDocs = filteredUsers.filter(u => userIdsWithDocs.has(u.id));
+                const usersWithDocs = users.filter(u => userIdsWithDocs.has(u.id));
+
+                const docsByUserId = new Map<string, any[]>();
+                for (const doc of filteredDocuments) {
+                  const userId = doc?.userId;
+                  if (!userId) continue;
+                  const list = docsByUserId.get(userId) || [];
+                  list.push(doc);
+                  docsByUserId.set(userId, list);
+                }
+
+                const query = documentsSearchQuery.trim().toLowerCase();
+                const filteredUsersWithDocs = query
+                  ? usersWithDocs.filter((u) => {
+                      const userMatch =
+                        String(u?.name || '').toLowerCase().includes(query) ||
+                        String(u?.email || '').toLowerCase().includes(query) ||
+                        String(u?.mobile || '').toLowerCase().includes(query);
+
+                      if (userMatch) return true;
+
+                      const userDocs = docsByUserId.get(u.id) || [];
+                      return userDocs.some((d) => {
+                        return (
+                          String(d?.type || '').toLowerCase().includes(query) ||
+                          String(d?.name || '').toLowerCase().includes(query)
+                        );
+                      });
+                    })
+                  : usersWithDocs;
+
+                const latestDocTime = (userId: string) => {
+                  const userDocs = docsByUserId.get(userId) || [];
+                  let latest = 0;
+                  for (const d of userDocs) {
+                    const raw = d?.uploadedAt || d?.createdAt;
+                    const t = raw ? new Date(raw).getTime() : 0;
+                    if (t > latest) latest = t;
+                  }
+                  return latest;
+                };
+
+                const sortedUsersWithDocs = [...filteredUsersWithDocs].sort(
+                  (a, b) => latestDocTime(b.id) - latestDocTime(a.id)
+                );
                 
-                if (usersWithDocs.length === 0) {
+                if (sortedUsersWithDocs.length === 0) {
                   return (
                     <div className="col-span-full text-center py-12">
                       <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -1157,8 +1212,8 @@ export default function SuperAdmin() {
                   );
                 }
                 
-                return usersWithDocs.map((user) => {
-                  const userDocs = filteredDocuments.filter(doc => doc.userId === user.id);
+                return sortedUsersWithDocs.map((user) => {
+                  const userDocs = docsByUserId.get(user.id) || [];
                   if (userDocs.length === 0) return null;
                   
                   const pendingCount = userDocs.filter(d => d.status === 'pending').length;

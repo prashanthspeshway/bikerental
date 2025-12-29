@@ -8,13 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Wallet,
   FileText,
   Upload,
-  Plus,
   History,
   User,
-  CreditCard,
   CheckCircle,
   Clock,
   XCircle,
@@ -59,7 +56,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
-  const [topUpAmount, setTopUpAmount] = useState('');
   const [user, setUser] = useState<any>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [rentals, setRentals] = useState<any[]>([]);
@@ -106,7 +102,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'wallet', 'documents', 'history'].includes(tabParam)) {
+    if (tabParam === 'wallet') {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'overview');
+      setSearchParams(next, { replace: true });
+      setActiveTab('overview');
+      return;
+    }
+    if (tabParam && ['overview', 'documents', 'history'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -175,35 +178,6 @@ export default function Dashboard() {
       setLocations(Array.isArray(data) ? data : []);
     } catch {
       setLocations([]);
-    }
-  };
-
-  const handleTopUp = async () => {
-    if (!topUpAmount || parseFloat(topUpAmount) <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid amount to top up.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!user) return;
-
-    try {
-      const updatedUser = await usersAPI.topUpWallet(user.id, parseFloat(topUpAmount));
-      setUser(updatedUser);
-      setTopUpAmount('');
-      toast({
-        title: "Success",
-        description: `$${topUpAmount} added to your wallet.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to top up wallet",
-        variant: "destructive",
-      });
     }
   };
 
@@ -309,7 +283,6 @@ export default function Dashboard() {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: User },
-    { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'history', label: 'Rental History', icon: History },
   ];
@@ -326,7 +299,7 @@ export default function Dashboard() {
               {isLoading ? 'Loading...' : `Welcome, ${user?.name || 'User'}`}
             </h1>
             <p className="text-muted-foreground">
-              Manage your account, wallet, and documents.
+              Manage your account and documents.
             </p>
           </div>
 
@@ -359,19 +332,7 @@ export default function Dashboard() {
               {activeTab === 'overview' && (
                 <>
                   {/* Stats Cards */}
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="bg-card rounded-2xl shadow-card p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl gradient-hero flex items-center justify-center">
-                          <Wallet className="h-6 w-6 text-primary-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                          <p className="text-2xl font-display font-bold">${user?.walletBalance?.toFixed(2) || '0.00'}</p>
-                        </div>
-                      </div>
-                    </div>
-
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div className="bg-card rounded-2xl shadow-card p-6">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -496,60 +457,6 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </>
-              )}
-
-              {/* Wallet */}
-              {activeTab === 'wallet' && (
-                <div className="space-y-6">
-                  <div className="bg-card rounded-2xl shadow-card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <p className="text-muted-foreground mb-2">Current Balance</p>
-                        <p className="text-4xl font-display font-bold">${user?.walletBalance?.toFixed(2) || '0.00'}</p>
-                      </div>
-                      <div className="w-14 h-14 rounded-xl gradient-hero flex items-center justify-center">
-                        <CreditCard className="h-7 w-7 text-primary-foreground" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Top Up */}
-                  <div className="bg-card rounded-2xl shadow-card p-6">
-                    <h3 className="font-display font-semibold text-lg mb-4">Top Up Wallet</h3>
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="amount">Amount ($)</Label>
-                        <Input
-                          id="amount"
-                          type="number"
-                          placeholder="Enter amount"
-                          value={topUpAmount}
-                          onChange={(e) => setTopUpAmount(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <Button onClick={handleTopUp}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Top Up
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Quick Amounts */}
-                    <div className="flex gap-2 mt-4">
-                      {[10, 25, 50, 100].map((amount) => (
-                        <Button
-                          key={amount}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setTopUpAmount(amount.toString())}
-                        >
-                          ${amount}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
               )}
 
               {/* Documents */}

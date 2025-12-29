@@ -232,11 +232,12 @@ export default function Garage() {
     const selectedLocationId = localStorage.getItem('selectedLocation');
     if (selectedLocationId) {
       const rawBikeLocationId = selectedBike.locationId;
-      const bikeLocationId = rawBikeLocationId
-        ? typeof rawBikeLocationId === 'object'
-          ? (rawBikeLocationId?.id || rawBikeLocationId?._id || rawBikeLocationId?.toString?.())
-          : rawBikeLocationId
-        : null;
+      const bikeLocationId =
+        typeof rawBikeLocationId === 'string'
+          ? rawBikeLocationId
+          : rawBikeLocationId && typeof rawBikeLocationId === 'object'
+            ? (rawBikeLocationId.id || rawBikeLocationId._id || rawBikeLocationId.toString?.())
+            : null;
       
       if (bikeLocationId !== selectedLocationId) {
         toast({
