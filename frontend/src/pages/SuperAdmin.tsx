@@ -385,9 +385,9 @@ export default function SuperAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-hidden">
+    <div className="h-svh bg-background flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 bg-card border-r border-border p-4 flex-col h-screen overflow-y-auto">
+      <aside className="hidden md:flex w-64 bg-card border-r border-border p-4 flex-col h-svh overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="p-2 rounded-xl gradient-hero">
@@ -425,7 +425,7 @@ export default function SuperAdmin() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+      <main className="flex-1 min-h-0 p-4 md:p-6 overflow-y-auto">
         <div className="md:hidden mb-4 flex items-center justify-between gap-3">
           <Sheet>
             <SheetTrigger asChild>
@@ -486,21 +486,23 @@ export default function SuperAdmin() {
         {/* Location Filter - Global for all tabs except documents and users */}
         {activeTab !== 'documents' && activeTab !== 'users' && (
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
-              <MapPin className="h-5 w-5 text-muted-foreground" />
-              <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
-                <SelectTrigger className="w-full md:w-64">
-                  <SelectValue placeholder="Filter by Location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>{formatLocationDisplay(loc)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+              <div className="flex items-center gap-3">
+                <MapPin className="h-5 w-5 text-muted-foreground shrink-0" />
+                <Select value={selectedLocationFilter} onValueChange={setSelectedLocationFilter}>
+                  <SelectTrigger className="w-full md:w-64">
+                    <SelectValue placeholder="Filter by Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>{formatLocationDisplay(loc)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) && (
-                <Badge variant="secondary" className="md:ml-2">
+                <Badge variant="secondary" className="md:ml-2 w-fit">
                   {formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter))}
                 </Badge>
               )}
@@ -548,7 +550,7 @@ export default function SuperAdmin() {
           <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-display font-bold mb-2">Vehicles</h1>
+                <h1 className="text-xl sm:text-2xl font-display font-bold mb-2">Vehicles</h1>
                 <p className="text-muted-foreground">
                   Add, edit, or remove vehicles from {selectedLocationFilter !== 'all' && locations.find(loc => loc.id === selectedLocationFilter) 
                     ? formatLocationDisplay(locations.find(loc => loc.id === selectedLocationFilter)) 
@@ -570,7 +572,7 @@ export default function SuperAdmin() {
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
               <div className="p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="flex flex-1 items-center gap-2">
+                  <div className="w-full flex items-center gap-2 sm:flex-1">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <Input 
                       placeholder="Search vehicles..." 
@@ -593,7 +595,7 @@ export default function SuperAdmin() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4">
                 {filteredBikes
                   .filter((bike) => {
                     const matchesSearch = allVehiclesSearchQuery === '' || 
@@ -604,9 +606,9 @@ export default function SuperAdmin() {
                     return matchesSearch && matchesBrand;
                   })
                   .map((bike) => (
-                  <div key={bike.id} className="border rounded-lg p-3 flex flex-col bg-card h-full min-w-0">
+                  <div key={bike.id} className="border rounded-lg p-2 sm:p-3 flex flex-col bg-card h-full min-w-0">
                     {bike.image && (
-                      <div className="relative mb-2 h-40 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0 sm:h-48">
+                      <div className="relative mb-2 h-32 sm:h-40 md:h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
                         <img 
                           src={bike.image} 
                           alt={bike.name} 
@@ -617,7 +619,7 @@ export default function SuperAdmin() {
                       </div>
                     )}
                     {!bike.image && (
-                      <div className="relative mb-2 bg-muted rounded-md h-40 flex items-center justify-center flex-shrink-0 sm:h-48">
+                      <div className="relative mb-2 bg-muted rounded-md h-32 sm:h-40 md:h-48 flex items-center justify-center flex-shrink-0">
                         <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
                         <Bike className="h-12 w-12 text-muted-foreground/50" />
                       </div>
@@ -625,7 +627,7 @@ export default function SuperAdmin() {
                     <div className="flex-1 flex flex-col min-w-0">
                       <p className="font-medium mb-1 truncate">{bike.name}</p>
                       {bike.brand && <p className="text-xs text-muted-foreground mb-2 truncate">Brand: {bike.brand}</p>}
-                      <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="mt-auto flex items-center justify-between pt-2 gap-2">
                         <p className="text-sm font-semibold text-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
                         <div className="flex gap-1 flex-shrink-0">
                           <Button
@@ -676,12 +678,13 @@ export default function SuperAdmin() {
 
         {activeTab === 'admins' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-display font-bold mb-2">Admins</h1>
                 <p className="text-muted-foreground">Create and manage admin accounts.</p>
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setNewAdminForm({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
                   setNewAdminCity('');
@@ -692,70 +695,72 @@ export default function SuperAdmin() {
                 Create Admin
               </Button>
             </div>
-            <div className="bg-card rounded-2xl shadow-card p-6">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left px-6 py-4 font-medium">Name</th>
-                    <th className="text-left px-6 py-4 font-medium">Email</th>
-                    <th className="text-left px-6 py-4 font-medium">City</th>
-                    <th className="text-left px-6 py-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {adminsForLocation.map((u) => {
-                    const userLocationId = getUserLocationId(u);
-                    const loc = locations.find((l) => l.id === userLocationId);
-                    return (
-                    <tr key={u.id}>
-                      <td className="px-6 py-4">{u.name}</td>
-                      <td className="px-6 py-4">{u.email}</td>
-                      <td className="px-6 py-4">{loc ? formatLocationDisplay(loc) : '—'}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingAdmin(u);
-                              setEditAdminForm({
-                                name: u.name || '',
-                                email: u.email || '',
-                                password: '',
-                                confirmPassword: '',
-                                locationId: userLocationId || '',
-                              });
-                              setEditAdminOpen(true);
-                            }}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={async () => {
-                              const ok = window.confirm('Delete this admin? This cannot be undone.');
-                              if (!ok) return;
-                              try {
-                                await usersAPI.delete(u.id);
-                                toast({ title: 'Admin deleted' });
-                                loadData();
-                              } catch (e: any) {
-                                toast({ title: 'Error', description: e.message || 'Failed to delete admin', variant: 'destructive' });
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
-                      </td>
+            <div className="bg-card rounded-2xl shadow-card overflow-hidden">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-[720px]">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Name</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Email</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">City</th>
+                      <th className="text-left px-6 py-4 font-medium whitespace-nowrap">Actions</th>
                     </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {adminsForLocation.map((u) => {
+                      const userLocationId = getUserLocationId(u);
+                      const loc = locations.find((l) => l.id === userLocationId);
+                      return (
+                      <tr key={u.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">{u.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{u.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{loc ? formatLocationDisplay(loc) : '—'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingAdmin(u);
+                                setEditAdminForm({
+                                  name: u.name || '',
+                                  email: u.email || '',
+                                  password: '',
+                                  confirmPassword: '',
+                                  locationId: userLocationId || '',
+                                });
+                                setEditAdminOpen(true);
+                              }}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={async () => {
+                                const ok = window.confirm('Delete this admin? This cannot be undone.');
+                                if (!ok) return;
+                                try {
+                                  await usersAPI.delete(u.id);
+                                  toast({ title: 'Admin deleted' });
+                                  loadData();
+                                } catch (e: any) {
+                                  toast({ title: 'Error', description: e.message || 'Failed to delete admin', variant: 'destructive' });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <Dialog open={createAdminOpen} onOpenChange={setCreateAdminOpen}>
               <DialogContent className="max-w-md">
@@ -1055,12 +1060,13 @@ export default function SuperAdmin() {
         {/* Reuse Admin tabs for bikes/users/documents/locations */}
         {activeTab === 'bikes' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-display font-bold mb-2">All Vehicles</h1>
                 <p className="text-muted-foreground">Add, edit, or remove vehicles from your fleet.</p>
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingBike(null);
                   setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
@@ -1073,12 +1079,12 @@ export default function SuperAdmin() {
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
               <div className="p-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full">
                   <Search className="h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search vehicles..." />
+                  <Input placeholder="Search vehicles..." className="flex-1" />
                 </div>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+              <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredBikes.length === 0 ? (
                   <div className="col-span-full text-center py-12">
                     <Bike className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -1091,18 +1097,19 @@ export default function SuperAdmin() {
                   </div>
                 ) : (
                   filteredBikes.map((bike) => (
-                  <div key={bike.id} className="border rounded-lg p-3">
+                  <div key={bike.id} className="border rounded-lg p-3 min-w-0">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">{bike.name}</p>
+                      <p className="font-medium truncate">{bike.name}</p>
                       <Badge variant="secondary">{bike.type}</Badge>
                     </div>
                     {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {bike.brand}</p>}
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">${bike.pricePerHour}/hr</p>
-                      <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-muted-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full sm:w-auto"
                           onClick={() => {
                             setEditingBike(bike);
                             setBikeForm({
@@ -1123,6 +1130,7 @@ export default function SuperAdmin() {
                         <Button
                           size="sm"
                           variant="destructive"
+                          className="w-full sm:w-auto"
                           onClick={async () => {
                             try {
                               await bikesAPI.delete(bike.id);
@@ -1413,9 +1421,9 @@ export default function SuperAdmin() {
             </div>
             <div className="bg-card rounded-2xl shadow-card p-6">
               <div className="text-muted-foreground">No refund requests connected. Backend support required.</div>
-              <div className="mt-4 flex gap-2">
-                <Button onClick={() => toast({ title: 'Approve requires backend' })}>Approve</Button>
-                <Button variant="outline" onClick={() => toast({ title: 'Reject requires backend' })}>Reject</Button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Button className="w-full sm:w-auto" onClick={() => toast({ title: 'Approve requires backend' })}>Approve</Button>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={() => toast({ title: 'Reject requires backend' })}>Reject</Button>
               </div>
             </div>
           </div>
@@ -1427,15 +1435,16 @@ export default function SuperAdmin() {
             <div className="grid md:grid-cols-2 gap-4">
               {locations.map((loc) => (
                 <div key={loc.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-medium">{formatLocationDisplay(loc)}</p>
                       <p className="text-xs text-muted-foreground">{loc.city}, {loc.state}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           setEditingLocation(loc);
                           setLocationForm({ name: loc.name, city: loc.city, state: loc.state, country: loc.country || 'India' });
@@ -1448,6 +1457,7 @@ export default function SuperAdmin() {
                       <Button
                         size="sm"
                         variant="destructive"
+                        className="w-full sm:w-auto"
                         onClick={async () => {
                           try {
                             await locationsAPI.delete(loc.id);
