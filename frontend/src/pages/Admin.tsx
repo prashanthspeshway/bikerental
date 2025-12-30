@@ -14,6 +14,7 @@ import {
   Clock,
   Eye,
   LogOut,
+  Menu,
   LayoutDashboard,
   DollarSign,
   Plus,
@@ -37,6 +38,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const statusStyles = {
   verified: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
@@ -386,9 +388,9 @@ export default function Admin() {
   }
 
   return (
-    <div className="h-screen bg-background flex overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border p-4 flex flex-col h-screen overflow-y-auto">
+      <aside className="hidden md:flex w-64 bg-card border-r border-border p-4 flex-col h-screen overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="p-2 rounded-xl gradient-hero">
@@ -445,7 +447,87 @@ export default function Admin() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="md:hidden mb-4 flex items-center justify-between gap-3">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl gradient-hero">
+                    <Bike className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-display font-bold">RideFlow</span>
+                      <Badge variant="secondary" className="text-xs">Admin</Badge>
+                    </div>
+                    {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) && (
+                      <div className="mt-1">
+                        <Badge variant="outline" className="text-xs flex items-center gap-1 w-fit">
+                          <MapPin className="h-3 w-3" />
+                          {formatLocationDisplay(locations.find(loc => loc.id === selectedLocationId))}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-2 flex flex-col h-full">
+                <nav className="space-y-1">
+                  {tabs.map((tab) => (
+                    <SheetClose asChild key={tab.id}>
+                      <button
+                        onClick={() => {
+                          setTab(tab.id);
+                          if (tab.id === 'users') setUserStatusFilter('all');
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                          activeTab === tab.id
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <tab.icon className="h-5 w-5" />
+                        <span className="font-medium">{tab.label}</span>
+                      </button>
+                    </SheetClose>
+                  ))}
+                </nav>
+
+                <div className="mt-auto space-y-2 pt-4 border-t border-border">
+                  <div className="px-4 py-2 text-sm">
+                    <p className="font-medium">{currentUser?.name}</p>
+                    <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                  </div>
+                  <SheetClose asChild>
+                    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
+                      <LogOut className="h-5 w-5" />
+                      Logout
+                    </Button>
+                  </SheetClose>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="min-w-0 flex-1">
+            <p className="font-display font-bold text-base truncate">
+              {tabs.find((t) => t.id === activeTab)?.label || 'Admin'}
+            </p>
+            {selectedLocationId && locations.find((loc) => loc.id === selectedLocationId) && (
+              <p className="text-xs text-muted-foreground truncate">
+                {formatLocationDisplay(locations.find((loc) => loc.id === selectedLocationId))}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
@@ -535,7 +617,8 @@ export default function Admin() {
             </div>
 
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
-              <table className="w-full">
+              <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left px-6 py-4 font-medium">Bike</th>
@@ -618,6 +701,7 @@ export default function Admin() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -625,9 +709,9 @@ export default function Admin() {
         {/* All Vehicles */}
         {activeTab === 'allVehicles' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-display font-bold mb-2">All Vehicles</h1>
+                <h1 className="text-xl sm:text-2xl font-display font-bold mb-2">All Vehicles</h1>
                 <p className="text-muted-foreground">
                   Add, edit, or remove vehicles from {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) 
                     ? formatLocationDisplay(locations.find(loc => loc.id === selectedLocationId)) 
@@ -635,6 +719,7 @@ export default function Admin() {
                 </p>
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingBike(null);
                   setBikeForm({ 
@@ -655,8 +740,8 @@ export default function Admin() {
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
               <div className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="w-full flex items-center gap-2 sm:flex-1">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <Input 
                       placeholder="Search vehicles..." 
@@ -665,7 +750,7 @@ export default function Admin() {
                     />
                   </div>
                   <Select value={selectedBrandFilter} onValueChange={setSelectedBrandFilter}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-full sm:w-48">
                       <SelectValue placeholder="Filter by Brand" />
                     </SelectTrigger>
                     <SelectContent>
@@ -679,7 +764,7 @@ export default function Admin() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 p-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4">
                 {bikes
                   .filter((bike) => {
                     const matchesSearch = allVehiclesSearchQuery === '' || 
@@ -690,9 +775,9 @@ export default function Admin() {
                     return matchesSearch && matchesBrand;
                   })
                   .map((bike) => (
-                  <div key={bike.id} className="border rounded-lg p-3 flex flex-col bg-card h-full min-w-0">
+                  <div key={bike.id} className="border rounded-lg p-2 sm:p-3 flex flex-col bg-card h-full min-w-0">
                     {bike.image && (
-                      <div className="relative mb-2 h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <div className="relative mb-2 h-32 sm:h-40 md:h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
                         <img 
                           src={bike.image} 
                           alt={bike.name} 
@@ -703,7 +788,7 @@ export default function Admin() {
                       </div>
                     )}
                     {!bike.image && (
-                      <div className="relative mb-2 bg-muted rounded-md h-48 flex items-center justify-center flex-shrink-0">
+                      <div className="relative mb-2 bg-muted rounded-md h-32 sm:h-40 md:h-48 flex items-center justify-center flex-shrink-0">
                         <Badge variant="secondary" className="absolute top-2 right-2 text-xs">{bike.type}</Badge>
                         <Bike className="h-12 w-12 text-muted-foreground/50" />
                       </div>
@@ -772,7 +857,8 @@ export default function Admin() {
               </p>
             </div>
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
-              <table className="w-full">
+              <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left px-6 py-4 font-medium">Booking</th>
@@ -896,6 +982,7 @@ export default function Admin() {
               </table>
             </div>
           </div>
+          </div>
         )}
 
         {/* Users */}
@@ -921,7 +1008,8 @@ export default function Admin() {
             </div>
 
             <div className="bg-card rounded-2xl shadow-card overflow-hidden">
-              <table className="w-full">
+              <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left px-6 py-4 font-medium">User</th>
@@ -970,6 +1058,7 @@ export default function Admin() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
