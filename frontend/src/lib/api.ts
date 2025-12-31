@@ -1,34 +1,130 @@
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3000/api';
+import { handleApiError, isAuthError, logError } from './errorHandler';
 
-let authToken: string | null = localStorage.getItem('authToken');
+// Get API base URL - use environment variable in production, fallback to proxy in development
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE;
+  }
+  // In development, use proxy. In production, use relative path or env var
+  if (import.meta.env.PROD) {
+    return '/api'; // Use relative path in production
+  }
+  return '/api'; // Use proxy in development
+};
+
+const API_BASE = getApiBase();
+
+let authToken: string | null = null;
+
+// Initialize auth token from localStorage
+if (typeof window !== 'undefined') {
+  authToken = localStorage.getItem('authToken');
+}
 
 export function setAuthToken(token: string | null) {
   authToken = token;
-  if (token) localStorage.setItem('authToken', token);
-  else localStorage.removeItem('authToken');
+  if (typeof window !== 'undefined') {
+    if (token) localStorage.setItem('authToken', token);
+    else localStorage.removeItem('authToken');
+  }
+}
+
+// Clear auth on 401/403 errors
+function handleAuthError() {
+  if (typeof window !== 'undefined') {
+    setAuthToken(null);
+    localStorage.removeItem('currentUser');
+    // Don't redirect automatically - let components handle it
+  }
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers: { ...headers, ...(init?.headers as any) } });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Request failed ${res.status}`);
+  
+  try {
+    const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+    const res = await fetch(url, { 
+      ...init, 
+      headers: { ...headers, ...(init?.headers as any) },
+      credentials: 'include', // Include cookies for CORS
+    });
+    
+    if (!res.ok) {
+      // Handle auth errors silently
+      if (res.status === 401 || res.status === 403) {
+        handleAuthError();
+        const error = new Error(`Authentication failed: ${res.status}`);
+        (error as any).status = res.status;
+        throw error;
+      }
+      
+      let msg = '';
+      try {
+        msg = await res.text();
+        // Try to parse as JSON for better error messages
+        try {
+          const json = JSON.parse(msg);
+          msg = json.message || json.error || msg;
+        } catch {
+          // Not JSON, use as is
+        }
+      } catch {
+        msg = `Request failed with status ${res.status}`;
+      }
+      
+      const error = new Error(msg || `Request failed ${res.status}`);
+      (error as any).status = res.status;
+      throw error;
+    }
+    
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      try {
+        return await res.json();
+      } catch (e) {
+        logError(e, 'apiRequest.json');
+        throw new Error('Invalid JSON response');
+      }
+    }
+    return (await res.text()) as unknown as T;
+  } catch (error) {
+    // Re-throw auth errors as-is (they're handled silently)
+    if (isAuthError(error)) {
+      throw error;
+    }
+    
+    // Handle network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      const networkError = new Error('Network error: Unable to reach server');
+      (networkError as any).code = 'NETWORK_ERROR';
+      throw networkError;
+    }
+    
+    // Re-throw other errors
+    throw handleApiError(error);
   }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) return res.json();
-  return (await res.text()) as unknown as T;
 }
 
 export function getCurrentUser() {
-  const userStr = localStorage.getItem('currentUser');
-  return userStr ? JSON.parse(userStr) : null;
+  if (typeof window === 'undefined') return null;
+  try {
+    const userStr = localStorage.getItem('currentUser');
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (error) {
+    logError(error, 'getCurrentUser');
+    return null;
+  }
 }
 
 export function setCurrentUser(user: any) {
-  if (user) localStorage.setItem('currentUser', JSON.stringify(user));
-  else localStorage.removeItem('currentUser');
+  if (typeof window === 'undefined') return;
+  try {
+    if (user) localStorage.setItem('currentUser', JSON.stringify(user));
+    else localStorage.removeItem('currentUser');
+  } catch (error) {
+    logError(error, 'setCurrentUser');
+  }
 }
 
 export const authAPI = {
@@ -108,16 +204,32 @@ export const documentsAPI = {
     apiRequest<any>('/documents', { method: 'POST', body: JSON.stringify({ name, type, url: fileUrl }) }),
   getUploadUrl: (name: string, type: string, contentType: string) =>
     apiRequest<any>('/documents/upload-url', { method: 'POST', body: JSON.stringify({ name, type, contentType }) }),
-  uploadFile: (file: File, name: string, type: string) => {
+  uploadFile: async (file: File, name: string, type: string) => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('name', name);
     fd.append('type', type);
-    return fetch(`${API_BASE}/documents/upload`, {
-      method: 'POST',
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
-      body: fd,
-    }).then((r) => r.json());
+    try {
+      const url = `${API_BASE}/documents/upload`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+        body: fd,
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          handleAuthError();
+        }
+        const error = await res.text();
+        throw new Error(error || `Upload failed: ${res.status}`);
+      }
+      
+      return await res.json();
+    } catch (error) {
+      throw handleApiError(error);
+    }
   },
   updateStatus: (id: string, status: 'pending' | 'approved' | 'rejected') =>
     apiRequest<any>(`/documents/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),

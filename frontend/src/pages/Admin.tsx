@@ -157,7 +157,7 @@ export default function Admin() {
             setRentals(rentalsData);
           } catch (error) {
             // Silently fail on auto-refresh to avoid spam
-            console.error('Auto-refresh error:', error);
+            // Errors are handled silently in production
           }
         };
         refreshBookingsData();

@@ -46,7 +46,7 @@ export default function Index() {
       const data = await bikesAPI.getAll(selectedLocation || undefined);
       setBikes(data);
     } catch (error) {
-      console.error('Failed to load bikes:', error);
+      // Silently handle error - bikes will just be empty
     }
   };
 

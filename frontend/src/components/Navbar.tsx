@@ -19,6 +19,7 @@ import { Bike, User, Menu, X, LogOut, MapPin, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getCurrentUser, authAPI, locationsAPI, rentalsAPI } from '@/lib/api';
 import { Location } from '@/types';
+import { safeAsync, isAuthError } from '@/lib/errorHandler';
 
 // Helper function to format location name for display (removes "Main Garage" suffix)
 const formatLocationDisplay = (loc: any): string => {
@@ -83,50 +84,61 @@ export function Navbar() {
   }, [location]);
 
   const loadActiveRide = async (currentUser: any) => {
-    try {
-      const rentals = await rentalsAPI.getAll();
-      // Only show active ride button when ride is started (ongoing/active), not when just confirmed
-      const active = rentals.find((r: any) => {
-        const rentalUserId = r.userId || r.user?.id;
-        return (
-          String(rentalUserId || '') === String(currentUser?.id || '') &&
-          (r.status === 'ongoing' || r.status === 'active')
-        );
-      });
-      setActiveRide(active || null);
-    } catch (error) {
-      console.error('Failed to load active ride:', error);
+    // Silently handle errors - don't show errors for auth failures
+    const rentals = await safeAsync(
+      () => rentalsAPI.getAll(),
+      [],
+      'loadActiveRide'
+    );
+    
+    if (!rentals || rentals.length === 0) {
       setActiveRide(null);
+      return;
     }
+    
+    // Only show active ride button when ride is started (ongoing/active), not when just confirmed
+    const active = rentals.find((r: any) => {
+      const rentalUserId = r.userId || r.user?.id;
+      return (
+        String(rentalUserId || '') === String(currentUser?.id || '') &&
+        (r.status === 'ongoing' || r.status === 'active')
+      );
+    });
+    setActiveRide(active || null);
   };
 
   const loadLocations = async () => {
-    try {
-      const data = await locationsAPI.getAll();
-      setLocations(data);
-      
-      const savedLocation = localStorage.getItem('selectedLocation') || '';
-      let nextLocationId = '';
-      const ids = new Set(data.map((l) => l.id));
-      if (savedLocation && ids.has(savedLocation)) {
-        nextLocationId = savedLocation;
-      } else if (savedLocation) {
-        const byName = data.find((l) => l.name === savedLocation);
-        if (byName?.id) {
-          nextLocationId = byName.id;
-          localStorage.setItem('selectedLocation', byName.id);
-        }
-      }
-
-      if (!nextLocationId && data.length > 0) {
-        nextLocationId = data[0].id;
-        localStorage.setItem('selectedLocation', nextLocationId);
-      }
-
-      if (nextLocationId) setSelectedLocation(nextLocationId);
-    } catch (error) {
-      console.error('Failed to load locations:', error);
+    const data = await safeAsync(
+      () => locationsAPI.getAll(),
+      [],
+      'loadLocations'
+    );
+    
+    if (!data || data.length === 0) {
+      return;
     }
+    
+    setLocations(data);
+    
+    const savedLocation = localStorage.getItem('selectedLocation') || '';
+    let nextLocationId = '';
+    const ids = new Set(data.map((l) => l.id));
+    if (savedLocation && ids.has(savedLocation)) {
+      nextLocationId = savedLocation;
+    } else if (savedLocation) {
+      const byName = data.find((l) => l.name === savedLocation);
+      if (byName?.id) {
+        nextLocationId = byName.id;
+        localStorage.setItem('selectedLocation', byName.id);
+      }
+    }
+
+    if (!nextLocationId && data.length > 0) {
+      nextLocationId = data[0].id;
+      localStorage.setItem('selectedLocation', nextLocationId);
+    }
+
+    if (nextLocationId) setSelectedLocation(nextLocationId);
   };
 
   const handleLocationChange = (locationId: string) => {

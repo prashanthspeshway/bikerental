@@ -26,7 +26,9 @@ bikerental/
 - **Wallet System**: Digital wallet with top-up functionality
 - **Document Management**: Upload and manage verification documents
 - **Admin Panel**: Admin access for managing bikes and users
+- **Super Admin Panel**: Global platform management
 - **MongoDB Database**: Persistent data storage with Mongoose
+- **Production Ready**: Error handling, error boundaries, and optimized builds
 
 ## Tech Stack
 
@@ -147,6 +149,36 @@ npm run dev
 
 - Frontend: http://localhost:8080
 - Backend API: http://localhost:3000/api
+
+## Production Deployment
+
+The application is production-ready with:
+- ✅ Error boundaries for graceful error handling
+- ✅ Silent error logging (development only)
+- ✅ Optimized production builds
+- ✅ Proper API error handling
+- ✅ Authentication error handling
+
+See [PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md) for detailed deployment instructions.
+
+### Quick Production Build
+
+```bash
+# Build frontend
+cd frontend
+npm run build
+
+# The build output will be in frontend/dist/
+```
+
+### Environment Variables for Production
+
+**Frontend** (`frontend/.env.production`):
+```env
+VITE_API_BASE=https://api.yourdomain.com/api
+```
+
+**Backend**: Set all environment variables in your hosting platform or `.env` file.
 
 ## License
 

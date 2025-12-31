@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { rentalsAPI, bikesAPI, getCurrentUser } from '@/lib/api';
+import { safeAsync } from '@/lib/errorHandler';
 
 const statusStyles = {
   confirmed: { color: 'bg-primary/10 text-primary', icon: Clock },
@@ -73,11 +74,13 @@ export default function ActiveRide() {
       if (active.bikeId && typeof active.bikeId === 'object') {
         setBike(active.bikeId);
       } else {
-        try {
-          const bikeData = await bikesAPI.getById(active.bikeId);
+        const bikeData = await safeAsync(
+          () => bikesAPI.getById(active.bikeId),
+          undefined,
+          'ActiveRide.loadBike'
+        );
+        if (bikeData) {
           setBike(bikeData);
-        } catch (error) {
-          console.error('Failed to load bike:', error);
         }
       }
     } catch (error: any) {

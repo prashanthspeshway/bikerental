@@ -111,7 +111,6 @@ export default function Payment() {
               navigate('/payment-success', { state: { rental: result.rental, bike } });
             }
           } catch (error) {
-            console.error(error);
             toast({
               title: 'Payment Verification Failed',
               description: 'Please contact support if money was deducted.',
@@ -132,7 +131,6 @@ export default function Payment() {
       const rzp1 = new (window as any).Razorpay(options);
       rzp1.open();
     } catch (error) {
-      console.error(error);
       toast({
         title: 'Error',
         description: 'Failed to initiate payment',
