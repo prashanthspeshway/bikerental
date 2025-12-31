@@ -352,7 +352,10 @@ export default function SuperAdmin() {
     }
     // Get user documents from the documents array
     const userDocs = documents.filter(d => d.userId === userId);
-    setSelectedDocumentUser({ ...user, documents: userDocs });
+    // Get user rentals
+    const userRentals = rentals.filter(r => r.userId === userId).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+    
+    setSelectedDocumentUser({ ...user, documents: userDocs, rentals: userRentals });
     setIsDocumentDialogOpen(true);
   };
 
@@ -1174,6 +1177,7 @@ export default function SuperAdmin() {
                     <th className="text-left px-6 py-4 font-medium">User</th>
                     <th className="text-left px-6 py-4 font-medium">Role</th>
                     <th className="text-left px-6 py-4 font-medium">Joined</th>
+                    <th className="text-left px-6 py-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -1192,6 +1196,15 @@ export default function SuperAdmin() {
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">
                         {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewUserDocuments(user.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -1608,9 +1621,9 @@ export default function SuperAdmin() {
       <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>User Documents Review</DialogTitle>
+            <DialogTitle>User Details & History</DialogTitle>
             <DialogDescription>
-              Review and verify documents for {selectedDocumentUser?.name}
+              Review documents and history for {selectedDocumentUser?.name}
             </DialogDescription>
           </DialogHeader>
           
@@ -1734,6 +1747,52 @@ export default function SuperAdmin() {
                 ) : (
                   <p className="text-muted-foreground text-center py-8 col-span-2">No documents uploaded</p>
                 )}
+              </div>
+
+              {/* Ride History */}
+              <div className="mt-6">
+                <h3 className="font-semibold text-lg mb-4">Ride History</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Bike</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Start</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">End</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Status</th>
+                        <th className="text-right px-4 py-3 font-medium text-sm">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {selectedDocumentUser.rentals && selectedDocumentUser.rentals.length > 0 ? (
+                        selectedDocumentUser.rentals.map((rental: any) => {
+                           const bike = bikes.find(b => b.id === rental.bikeId);
+                           return (
+                             <tr key={rental.id}>
+                               <td className="px-4 py-3 text-sm">{bike?.name || rental.bikeId}</td>
+                               <td className="px-4 py-3 text-sm">{new Date(rental.startTime).toLocaleString()}</td>
+                               <td className="px-4 py-3 text-sm">{rental.endTime ? new Date(rental.endTime).toLocaleString() : '-'}</td>
+                               <td className="px-4 py-3 text-sm">
+                                 <Badge variant="outline" className={statusStyles[rental.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                                   {rental.status}
+                                 </Badge>
+                               </td>
+                               <td className="px-4 py-3 text-sm text-right">
+                                 {rental.totalCost ? `₹${rental.totalCost}` : '-'}
+                               </td>
+                             </tr>
+                           );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                            No ride history found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Actions */}
