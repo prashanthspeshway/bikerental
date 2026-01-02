@@ -39,6 +39,11 @@ function handleAuthError() {
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  // Ensure we have the latest token from storage if we don't have one in memory
+  if (!authToken && typeof window !== 'undefined') {
+    authToken = localStorage.getItem('authToken');
+  }
+
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   
@@ -155,6 +160,16 @@ export const authAPI = {
     setCurrentUser(data);
     return data;
   },
+  forgotPassword: (email: string) =>
+    apiRequest<any>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, newPassword: string) =>
+    apiRequest<any>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    }),
 };
 
 export const bikesAPI = {

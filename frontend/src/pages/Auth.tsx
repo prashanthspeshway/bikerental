@@ -14,6 +14,12 @@ export default function Auth() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Forgot Password States
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -29,6 +35,49 @@ export default function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Forgot Password Flow
+    if (isForgotPassword) {
+      setIsLoading(true);
+      try {
+        if (isResetting) {
+          // Reset Password
+          if (!resetToken || !formData.password) {
+            toast({ title: "Error", description: "Please enter token and new password", variant: "destructive" });
+            return;
+          }
+          await authAPI.resetPassword(resetToken, formData.password);
+          toast({ title: "Success", description: "Password reset successfully! Please login." });
+          setIsForgotPassword(false);
+          setIsResetting(false);
+          setResetToken('');
+          setFormData(prev => ({ ...prev, password: '' }));
+        } else {
+          // Request Reset
+          if (!formData.email) {
+            toast({ title: "Error", description: "Please enter your email", variant: "destructive" });
+            return;
+          }
+          const res = await authAPI.forgotPassword(formData.email);
+          toast({ title: "Success", description: res.message });
+          if (res.devToken) {
+            setResetToken(res.devToken);
+            toast({ title: "Dev Mode", description: "Token pre-filled for testing" });
+          }
+          setIsResetting(true);
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "An error occurred",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Normal Login/Signup Flow
     // Basic validation
     if (!formData.email || !formData.password) {
       toast({
@@ -68,7 +117,7 @@ export default function Auth() {
         const data = await authAPI.register(formData.email, formData.password, formData.name);
         toast({
           title: "Success",
-          description: "Account created successfully! Welcome bonus of $10 added to your wallet.",
+          description: "Account created successfully! Welcome bonus of ₹500 added to your wallet.",
         });
         // Redirect based on role
         if (data.user?.role === 'superadmin') {
@@ -88,6 +137,20 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getHeaderText = () => {
+    if (isForgotPassword) {
+      return isResetting ? 'Reset Password' : 'Forgot Password';
+    }
+    return isAdmin ? (isLogin ? 'Admin Login' : 'Admin Portal') : (isLogin ? 'Welcome back' : 'Create account');
+  };
+
+  const getSubHeaderText = () => {
+    if (isForgotPassword) {
+      return isResetting ? 'Enter the token and your new password' : 'Enter your email to receive a reset link';
+    }
+    return isLogin ? 'Enter your credentials to access your account' : 'Sign up to start renting bikes today';
   };
 
   return (
@@ -115,17 +178,15 @@ export default function Auth() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-display font-bold mb-2">
-              {isAdmin ? 'Admin ' : ''}{isLogin ? 'Welcome back' : 'Create account'}
+              {getHeaderText()}
             </h1>
             <p className="text-muted-foreground">
-              {isLogin
-                ? 'Enter your credentials to access your account'
-                : 'Sign up to start renting bikes today'}
+              {getSubHeaderText()}
             </p>
           </div>
 
           {/* Admin Badge */}
-          {isAdmin && (
+          {isAdmin && !isForgotPassword && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-secondary/50 border border-border mb-6">
               <Shield className="h-5 w-5 text-primary" />
               <span className="text-sm font-medium">Admin Portal</span>
@@ -134,7 +195,8 @@ export default function Auth() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {/* Name Field - Only for Signup */}
+            {!isLogin && !isForgotPassword && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
@@ -147,42 +209,65 @@ export default function Auth() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
+            {/* Email Field - Always visible unless resetting password */}
+            {(!isForgotPassword || (isForgotPassword && !isResetting)) && (
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={isResetting}
                 />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
               </div>
-            </div>
+            )}
 
-            {isLogin && (
+            {/* Token Field - Only for Resetting */}
+            {isResetting && (
+              <div className="space-y-2">
+                <Label htmlFor="token">Reset Token</Label>
+                <Input
+                  id="token"
+                  type="text"
+                  placeholder="Enter reset token"
+                  value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* Password Field - Login, Signup, or Resetting */}
+            {(!isForgotPassword || isResetting) && (
+              <div className="space-y-2">
+                <Label htmlFor="password">{isResetting ? 'New Password' : 'Password'}</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Forgot Password Link - Only on Login */}
+            {isLogin && !isForgotPassword && (
               <div className="flex justify-end">
                 <button
                   type="button"
                   className="text-sm text-primary hover:underline"
+                  onClick={() => setIsForgotPassword(true)}
                 >
                   Forgot password?
                 </button>
@@ -190,24 +275,47 @@ export default function Auth() {
             )}
 
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-              {isLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              {isLoading 
+                ? 'Please wait...' 
+                : isForgotPassword 
+                  ? (isResetting ? 'Reset Password' : 'Send Reset Link')
+                  : (isLogin ? 'Sign In' : 'Create Account')
+              }
             </Button>
+            
+            {/* Back to Login from Forgot Password */}
+            {isForgotPassword && (
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full mt-2" 
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setIsResetting(false);
+                  setResetToken('');
+                }}
+              >
+                Back to Login
+              </Button>
+            )}
           </form>
 
-          {/* Toggle */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-            <button
-              type="button"
-              className="text-primary font-medium hover:underline"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
+          {/* Toggle Login/Signup - Only when not in Forgot Password mode */}
+          {!isForgotPassword && (
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+              <button
+                type="button"
+                className="text-primary font-medium hover:underline"
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin ? 'Sign up' : 'Sign in'}
+              </button>
+            </p>
+          )}
 
           {/* Admin Link */}
-          {!isAdmin && (
+          {!isAdmin && !isForgotPassword && (
             <p className="mt-4 text-center text-sm">
               <Link
                 to="/auth?admin=true"

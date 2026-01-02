@@ -16,7 +16,7 @@ import {
   LogOut,
   Menu,
   LayoutDashboard,
-  DollarSign,
+  IndianRupee,
   Plus,
   Edit,
   Trash2,
@@ -257,6 +257,10 @@ export default function Admin() {
       });
       loadData();
     } catch (error: any) {
+      if (error.status === 401 || error.status === 403) {
+        navigate('/auth');
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to update document",
@@ -634,7 +638,7 @@ export default function Admin() {
                     <tr key={bike.id} className="hover:bg-muted/30">
                       <td className="px-6 py-4 font-medium">{bike.name}</td>
                       <td className="px-6 py-4 capitalize">{bike.type}</td>
-                      <td className="px-6 py-4">${bike.pricePerHour}</td>
+                      <td className="px-6 py-4">₹{bike.pricePerHour}</td>
                       <td className="px-6 py-4">{bike.kmLimit} km</td>
                       <td className="px-6 py-4">
                         <Badge variant={bike.available ? 'default' : 'secondary'} className={bike.available ? 'bg-accent text-accent-foreground' : ''}>
@@ -797,7 +801,7 @@ export default function Admin() {
                       <p className="font-medium mb-1 truncate">{bike.name}</p>
                       {bike.brand && <p className="text-xs text-muted-foreground mb-2 truncate">Brand: {bike.brand}</p>}
                       <div className="mt-auto flex items-center justify-between pt-2 gap-2">
-                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
+                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">₹{bike.pricePerHour}/hr</p>
                         <div className="flex gap-1 flex-shrink-0">
                           <Button
                             size="sm"
@@ -1071,7 +1075,7 @@ export default function Admin() {
               <p className="text-muted-foreground">
                 View user-submitted documents for {selectedLocationId && locations.find(loc => loc.id === selectedLocationId) 
                   ? formatLocationDisplay(locations.find(loc => loc.id === selectedLocationId)) 
-                  : 'your location'}. Document verification is handled by Super Admin.
+                  : 'your location'}. Verify and approve documents.
               </p>
             </div>
 
@@ -1337,7 +1341,7 @@ export default function Admin() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Wallet Balance</label>
-                  <p className="text-sm font-medium">${selectedUser.walletBalance?.toFixed(2) || '0.00'}</p>
+                  <p className="text-sm font-medium">₹{selectedUser.walletBalance?.toFixed(2) || '0.00'}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -1385,9 +1389,23 @@ export default function Admin() {
                               {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
                             </Badge>
                             {doc.status === 'pending' && (
-                              <Badge variant="outline" className="text-xs">
-                                Awaiting Super Admin approval
-                              </Badge>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleDocumentAction(doc.id || doc._id, 'reject')}
+                                >
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Reject
+                                </Button>
+                                <Button 
+                                  size="sm"
+                                  onClick={() => handleDocumentAction(doc.id || doc._id, 'approve')}
+                                >
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Approve
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -1517,9 +1535,23 @@ export default function Admin() {
                             Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                           </p>
                           {doc.status === 'pending' && (
-                            <Badge variant="outline" className="text-xs">
-                              Awaiting Super Admin approval
-                            </Badge>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleDocumentAction(doc.id || doc._id, 'reject')}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => handleDocumentAction(doc.id || doc._id, 'approve')}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>

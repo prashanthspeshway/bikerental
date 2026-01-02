@@ -16,7 +16,7 @@ import {
   LogOut,
   Menu,
   LayoutDashboard,
-  DollarSign,
+  IndianRupee,
   Plus,
   Edit,
   Trash2,
@@ -261,7 +261,7 @@ export default function SuperAdmin() {
     { key: 'models', label: 'Vehicles', icon: Bike },
     { key: 'admins', label: 'Admins', icon: Shield },
     { key: 'bookings', label: 'Bookings', icon: Calendar },
-    { key: 'refunds', label: 'Refunds', icon: DollarSign },
+    { key: 'refunds', label: 'Refunds', icon: IndianRupee },
     { key: 'bikes', label: 'All Vehicles', icon: Bike },
     { key: 'users', label: 'Users', icon: Users },
     { key: 'documents', label: 'Documents', icon: FileText },
@@ -631,7 +631,7 @@ export default function SuperAdmin() {
                       <p className="font-medium mb-1 truncate">{bike.name}</p>
                       {bike.brand && <p className="text-xs text-muted-foreground mb-2 truncate">Brand: {bike.brand}</p>}
                       <div className="mt-auto flex items-center justify-between pt-2 gap-2">
-                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
+                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">₹{bike.pricePerHour}/hr</p>
                         <div className="flex gap-1 flex-shrink-0">
                           <Button
                             size="sm"
@@ -1107,7 +1107,7 @@ export default function SuperAdmin() {
                     </div>
                     {bike.brand && <p className="text-xs text-muted-foreground mb-1">Brand: {bike.brand}</p>}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-muted-foreground whitespace-nowrap">${bike.pricePerHour}/hr</p>
+                      <p className="text-sm text-muted-foreground whitespace-nowrap">₹{bike.pricePerHour}/hr</p>
                       <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
                         <Button
                           size="sm"
@@ -1394,25 +1394,9 @@ export default function SuperAdmin() {
                                 </div>
                               )}
                               {doc.status === 'pending' && (
-                                <div className="flex gap-1 mt-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="flex-1 text-xs"
-                                    onClick={() => handleDocumentAction(doc.id, 'reject')}
-                                  >
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Reject
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    className="flex-1 text-xs"
-                                    onClick={() => handleDocumentAction(doc.id, 'approve')}
-                                  >
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Approve
-                                  </Button>
-                                </div>
+                                <Badge variant="outline" className="text-xs mt-2">
+                                  Awaiting Admin approval
+                                </Badge>
                               )}
                             </div>
                           );
@@ -1718,27 +1702,9 @@ export default function SuperAdmin() {
                             Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                           </p>
                           {doc.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  handleDocumentAction(doc.id || doc._id, 'reject');
-                                }}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Reject
-                              </Button>
-                              <Button 
-                                size="sm"
-                                onClick={() => {
-                                  handleDocumentAction(doc.id || doc._id, 'approve');
-                                }}
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              Awaiting Admin approval
+                            </Badge>
                           )}
                         </div>
                       </div>

@@ -156,8 +156,8 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     }
 
     const currentUser = await User.findById(req.user.userId);
-    if (currentUser.role !== 'superadmin') {
-      return res.status(403).json({ message: 'Super Admin access required' });
+    if (!['admin', 'superadmin'].includes(currentUser.role)) {
+      return res.status(403).json({ message: 'Admin access required' });
     }
 
     // Find user with this document

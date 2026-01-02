@@ -9,7 +9,7 @@ import {
   Calendar,
   Clock,
   MapPin,
-  DollarSign,
+  IndianRupee,
   CheckCircle,
   XCircle,
   ArrowLeft,
@@ -300,14 +300,14 @@ export default function ActiveRide() {
 
                 <div className="bg-muted/50 rounded-xl p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <DollarSign className="h-5 w-5 text-primary" />
+                    <IndianRupee className="h-5 w-5 text-primary" />
                     <h3 className="font-semibold text-lg">Pricing</h3>
                   </div>
                   <div className="space-y-3">
                     {bike && (
                       <div>
                         <p className="text-sm text-muted-foreground">Rate per Hour</p>
-                        <p className="font-medium">${bike.pricePerHour}/hr</p>
+                        <p className="font-medium">₹{bike.pricePerHour}/hr</p>
                       </div>
                     )}
                     <div>
@@ -319,13 +319,13 @@ export default function ActiveRide() {
                     <div className="pt-3 border-t">
                       <p className="text-sm text-muted-foreground">Current Total</p>
                       <p className="text-2xl font-display font-bold text-primary">
-                        ${currentPrice.toFixed(2)}
+                        ₹{currentPrice.toFixed(2)}
                       </p>
                     </div>
                     {rental.totalAmount && (
                       <div>
                         <p className="text-sm text-muted-foreground">Paid Amount</p>
-                        <p className="font-medium">${rental.totalAmount.toFixed(2)}</p>
+                        <p className="font-medium">₹{rental.totalAmount.toFixed(2)}</p>
                       </div>
                     )}
                   </div>

@@ -66,7 +66,7 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5 text-xs">
               <Clock className="h-3 w-3 text-primary" />
-              <span className="font-semibold">${bike.pricePerHour}</span>
+              <span className="font-semibold">₹{bike.pricePerHour}</span>
               <span className="text-muted-foreground">/hr</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
@@ -137,7 +137,7 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-1.5 text-xs">
             <Clock className="h-3 w-3 text-primary" />
-            <span className="font-semibold">${bike.pricePerHour}</span>
+            <span className="font-semibold">₹{bike.pricePerHour}</span>
             <span className="text-muted-foreground">/hr</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs">
@@ -165,7 +165,7 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
           {(durationHours && durationHours > 0) ? (
             <div className="flex flex-col">
               <div className="font-bold text-xl text-foreground">
-                ${Math.round(bike.pricePerHour * durationHours)}
+                ₹{Math.round(bike.pricePerHour * durationHours)}
               </div>
               <div className="text-[10px] text-muted-foreground">
                 Total for {Math.round(durationHours)} hrs

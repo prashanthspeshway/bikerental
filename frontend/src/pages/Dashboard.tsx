@@ -191,6 +191,25 @@ export default function Dashboard() {
   const handleUpdateProfile = async () => {
     if (!user) return;
 
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(formData.mobile)) {
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Mobile number must be 10 digits and start with 6, 7, 8, or 9.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.name || !formData.email || !formData.emergencyContact || !formData.familyContact || !formData.permanentAddress || (!formData.currentLocationId && !formData.currentAddress)) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill all required fields (except Hotel Stay).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await usersAPI.update(user.id, {
         name: formData.name,
@@ -573,6 +592,27 @@ export default function Dashboard() {
                   <div className="bg-card rounded-2xl shadow-card p-6">
                     <h3 className="font-display font-semibold text-lg mb-4">Upload Documents</h3>
                     
+                    {(() => {
+                      const mobileRegex = /^[6-9]\d{9}$/;
+                      const isProfileComplete = 
+                        formData.name && 
+                        formData.mobile && mobileRegex.test(formData.mobile) &&
+                        formData.email && 
+                        formData.emergencyContact && 
+                        formData.familyContact && 
+                        formData.permanentAddress && 
+                        (formData.currentLocationId || formData.currentAddress);
+
+                      if (!isProfileComplete) {
+                        return (
+                          <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+                            <p>Please complete your Personal Information (including a valid mobile number) to enable document uploads.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
                     {/* Aadhar Card - Front and Back Side by Side */}
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div className="space-y-2">
@@ -815,6 +855,9 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground mt-4">
                       Supported: PDF, JPG, PNG (Max 10MB per file)
                     </p>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

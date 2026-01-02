@@ -619,7 +619,7 @@ export default function Garage() {
                       </div>
                       <div>
                         <span className="text-muted-foreground block">Rate</span>
-                        <span className="font-medium">${selectedBike.pricePerHour}/hr</span>
+                        <span className="font-medium">₹{selectedBike.pricePerHour}/hr</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground block">Duration</span>

@@ -167,7 +167,7 @@ export default function Payment() {
               <hr />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total Amount</span>
-                <span>₹{totalAmount}</span>
+                <span>₹{totalAmount.toFixed(2)}</span>
               </div>
             </CardContent>
             <CardFooter>
@@ -177,7 +177,7 @@ export default function Payment() {
                 onClick={handlePayment}
                 disabled={loading}
               >
-                {loading ? 'Processing...' : `Pay ₹${totalAmount}`}
+                {loading ? 'Processing...' : `Pay ₹${totalAmount.toFixed(2)}`}
               </Button>
             </CardFooter>
           </Card>

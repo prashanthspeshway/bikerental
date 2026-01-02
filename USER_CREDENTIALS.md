@@ -5,7 +5,7 @@
 **Email:** `admin@bikerental.com`  
 **Password:** `admin123`  
 **Role:** Admin  
-**Wallet Balance:** $1000
+**Wallet Balance:** ₹10000
 
 ### Admin Features:
 - Access to Admin Panel (`/admin`)
@@ -21,19 +21,19 @@
 **Email:** `john@example.com`  
 **Password:** `user123`  
 **Role:** User  
-**Wallet Balance:** $50
+**Wallet Balance:** ₹500
 
 ### User 2
 **Email:** `jane@example.com`  
 **Password:** `user123`  
 **Role:** User  
-**Wallet Balance:** $75
+**Wallet Balance:** ₹750
 
 ### User 3
 **Email:** `bob@example.com`  
 **Password:** `user123`  
 **Role:** User  
-**Wallet Balance:** $25
+**Wallet Balance:** ₹250
 
 ## User Features:
 - Access to Dashboard (`/dashboard`)

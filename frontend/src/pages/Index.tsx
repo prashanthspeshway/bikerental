@@ -219,7 +219,7 @@ export default function Index() {
                 Ready to Ride?
               </h2>
               <p className="text-muted-foreground max-w-xl mx-auto mb-8">
-                Create your account today and get $10 credit for your first rental.
+                Create your account today and get ₹500 credit for your first rental.
               </p>
               <Link to="/auth?mode=signup">
                 <Button variant="hero" size="xl">

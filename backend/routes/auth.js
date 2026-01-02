@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { transformUser } from '../utils/transform.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -27,7 +28,7 @@ router.post('/register', async (req, res) => {
       name,
       password,
       role: 'user',
-      walletBalance: 10, // Welcome bonus
+      walletBalance: 500, // Welcome bonus
       documents: []
     });
 
@@ -86,6 +87,70 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Error logging in' });
+  }
+});
+
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.json({ message: 'If a user with this email exists, a password reset link has been sent.' });
+    }
+
+    // Generate token
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+    await user.save();
+
+    // Log token for dev testing
+    console.log('==========================================');
+    console.log(`PASSWORD RESET REQUEST FOR: ${email}`);
+    console.log(`TOKEN: ${token}`);
+    console.log('==========================================');
+
+    res.json({ message: 'If a user with this email exists, a password reset link has been sent.', devToken: token });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Error processing request' });
+  }
+});
+
+// Reset Password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token and new password are required' });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Password reset token is invalid or has expired' });
+    }
+
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Error resetting password' });
   }
 });
 
