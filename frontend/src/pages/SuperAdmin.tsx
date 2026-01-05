@@ -67,34 +67,8 @@ const LAST_ADMIN_CITY_STORAGE_KEY = 'superadmin.lastAdminCity';
 // Helper function to format location name for display (removes "Main Garage" suffix)
 const formatLocationDisplay = (loc: any): string => {
   if (!loc) return '';
-  let displayName = loc.name || '';
-  const city = loc.city || '';
-  
-  // Remove "Main Garage" or " - Main Garage" from the name
-  displayName = displayName.replace(/\s*-\s*Main\s+Garage/gi, '').replace(/Main\s+Garage/gi, '').trim();
-  
-  // Remove duplicate city names (e.g., "Bangalore - Bangalore" -> "Bangalore")
-  if (city) {
-    const cityLower = city.toLowerCase();
-    // Remove city name from the beginning if it's repeated
-    displayName = displayName.replace(new RegExp(`^${city}\\s*-\\s*`, 'i'), '');
-    // If what remains is just the city again, remove it
-    if (displayName.toLowerCase() === cityLower) {
-      displayName = '';
-    }
-  }
-  
-  // If location name is empty or matches city, just show city
-  if (!displayName || displayName.toLowerCase() === city.toLowerCase()) {
-    return city || displayName || '';
-  }
-  
-  // If city exists and cleaned name doesn't start with city, show city - name
-  if (city && !displayName.toLowerCase().startsWith(city.toLowerCase())) {
-    return `${city} - ${displayName}`;
-  }
-  
-  return displayName;
+  // Show only the city name as per requirement
+  return loc.city || loc.name || '';
 };
 
 export default function SuperAdmin() {
@@ -1435,7 +1409,6 @@ export default function SuperAdmin() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-medium">{formatLocationDisplay(loc)}</p>
-                      <p className="text-xs text-muted-foreground">{loc.city}, {loc.state}</p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
                       <Button
@@ -1480,10 +1453,7 @@ export default function SuperAdmin() {
                   <DialogDescription>Update location details</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
-                  <Input placeholder="Name" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} />
                   <Input placeholder="City" value={locationForm.city} onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })} />
-                  <Input placeholder="State" value={locationForm.state} onChange={(e) => setLocationForm({ ...locationForm, state: e.target.value })} />
-                  <Input placeholder="Country" value={locationForm.country} onChange={(e) => setLocationForm({ ...locationForm, country: e.target.value })} />
                   <div className="flex gap-2">
                     <Button
                       onClick={async () => {

@@ -28,28 +28,8 @@ const statusStyles = {
 
 const formatLocationDisplay = (loc: any): string => {
   if (!loc) return '';
-  let displayName = loc.name || '';
-  const city = loc.city || '';
-
-  displayName = displayName.replace(/\s*-\s*Main\s+Garage/gi, '').replace(/Main\s+Garage/gi, '').trim();
-
-  if (city) {
-    const cityLower = city.toLowerCase();
-    displayName = displayName.replace(new RegExp(`^${city}\\s*-\\s*`, 'i'), '');
-    if (displayName.toLowerCase() === cityLower) {
-      displayName = '';
-    }
-  }
-
-  if (!displayName || displayName.toLowerCase() === city.toLowerCase()) {
-    return city || displayName || '';
-  }
-
-  if (city && !displayName.toLowerCase().startsWith(city.toLowerCase())) {
-    return `${city} - ${displayName}`;
-  }
-
-  return displayName;
+  // Show only the city name as per requirement
+  return loc.city || loc.name || '';
 };
 
 export default function Dashboard() {

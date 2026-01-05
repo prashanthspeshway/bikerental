@@ -94,6 +94,7 @@ export function transformRental(rental) {
     totalAmount: rentalObj.totalAmount,
     paymentStatus: rentalObj.paymentStatus,
     paymentInfo: rentalObj.paymentInfo,
+    userImages: rentalObj.userImages || [],
     bike: bike,
     user: user
   };

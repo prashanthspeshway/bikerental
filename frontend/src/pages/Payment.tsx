@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Footer } from '@/components/Footer';
 import { getCurrentUser, paymentsAPI, documentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
+import { Plus } from 'lucide-react';
 
 interface BookingDetails {
   bike: Bike;
@@ -20,6 +21,9 @@ export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   
   const bookingDetails = location.state?.bookingDetails as BookingDetails;
 
@@ -79,6 +83,36 @@ export default function Payment() {
 
   const { bike, pickupTime, dropoffTime, durationHours, totalAmount } = bookingDetails;
 
+  const onPickFiles = () => {
+    fileInputRef.current?.click();
+  };
+
+  const onFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    try {
+      setUploading(true);
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const res = await documentsAPI.uploadFile(file, file.name, 'rental_bike_image');
+        if (res?.fileUrl) {
+          uploadedUrls.push(res.fileUrl);
+        } else if (res?.url) {
+          uploadedUrls.push(res.url);
+        }
+      }
+      if (uploadedUrls.length > 0) {
+        setExtraImages((prev) => [...prev, ...uploadedUrls]);
+        toast({ title: 'Images uploaded', description: `${uploadedUrls.length} image(s) added` });
+      }
+    } catch (err: any) {
+      toast({ title: 'Upload error', description: err.message || 'Failed to upload images', variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handlePayment = async () => {
     try {
       setLoading(true);
@@ -103,7 +137,8 @@ export default function Payment() {
                 pickupTime,
                 dropoffTime,
                 totalAmount,
-                selectedLocationId
+                selectedLocationId,
+                additionalImages: extraImages
               }
             });
             
@@ -152,6 +187,56 @@ export default function Payment() {
               <CardTitle>{bike.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Bike Images</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onPickFiles}
+                    disabled={uploading}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    {uploading ? 'Uploading...' : 'Add Images'}
+                  </Button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={onFilesSelected}
+                />
+                <div className="flex gap-3 flex-wrap">
+                  {bike.image && (
+                    <img
+                      src={bike.image}
+                      alt={bike.name}
+                      className="w-20 h-20 object-cover rounded-md border"
+                    />
+                  )}
+                  {extraImages.map((url, idx) => (
+                    <img
+                      key={`${url}-${idx}`}
+                      src={url}
+                      alt={`Extra ${idx + 1}`}
+                      className="w-20 h-20 object-cover rounded-md border"
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={onPickFiles}
+                    className="w-20 h-20 rounded-md border border-dashed flex items-center justify-center text-muted-foreground hover:bg-muted/50"
+                    aria-label="Add image"
+                  >
+                    <Plus className="h-6 w-6" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload any extra bike images before payment.
+                </p>
+              </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pickup</span>
                 <span className="font-medium">{new Date(pickupTime).toLocaleString()}</span>

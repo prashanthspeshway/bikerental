@@ -71,7 +71,7 @@ router.post('/verify', authenticateToken, async (req, res) => {
     if (hmac !== razorpay_signature) {
       return res.status(400).json({ success: false, message: 'Signature mismatch' });
     }
-    const { bikeId, pickupTime, dropoffTime, totalAmount, selectedLocationId } = bookingDetails || {};
+    const { bikeId, pickupTime, dropoffTime, totalAmount, selectedLocationId, additionalImages } = bookingDetails || {};
     const bike = await Bike.findById(bikeId).populate('locationId');
     if (!bike) return res.status(404).json({ success: false, message: 'Bike not found' });
     
@@ -128,6 +128,7 @@ router.post('/verify', authenticateToken, async (req, res) => {
         razorpayPaymentId: razorpay_payment_id,
         razorpaySignature: razorpay_signature,
       },
+      userImages: additionalImages || []
     });
     await rental.save();
     bike.available = false;

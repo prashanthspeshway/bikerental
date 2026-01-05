@@ -17,6 +17,7 @@ const rentalSchema = new mongoose.Schema({
     razorpayPaymentId: String,
     razorpaySignature: String
   },
+  userImages: [{ type: String }],
   reminderSent: { type: Boolean, default: false }
 }, { timestamps: true });
 
