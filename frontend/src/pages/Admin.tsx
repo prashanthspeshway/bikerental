@@ -383,9 +383,9 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-hidden">
+    <div className="h-screen bg-background flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 bg-card border-r border-border p-4 flex-col h-screen overflow-y-auto">
+      <aside className="hidden md:flex w-64 bg-card border-r border-border p-4 flex-col h-full overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="p-2 rounded-xl gradient-hero">
@@ -492,7 +492,7 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="p-2 flex flex-col h-full">
+              <div className="p-2">
                 <nav className="space-y-1">
                   {tabs.map((tab) => (
                     <SheetClose asChild key={tab.id}>
@@ -513,8 +513,9 @@ export default function Admin() {
                     </SheetClose>
                   ))}
                 </nav>
+              </div>
 
-                <div className="mt-auto space-y-2 pt-4 border-t border-border">
+              <div className="mt-auto space-y-2 pt-4 border-t border-border">
                   <div className="px-4 py-2 text-sm">
                     <p className="font-medium">{currentUser?.name}</p>
                     <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
@@ -547,19 +548,14 @@ export default function Admin() {
                     </Button>
                   </SheetClose>
                 </div>
-              </div>
             </SheetContent>
           </Sheet>
 
-          <div className="min-w-0 flex-1">
-            <p className="font-display font-bold text-base truncate">
-              {tabs.find((t) => t.id === activeTab)?.label || 'Admin'}
+          <div className="min-w-0">
+            <p className="font-display font-semibold truncate">Admin</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {tabs.find((t) => t.id === activeTab)?.label}
             </p>
-            {selectedLocationId && locations.find((loc) => loc.id === selectedLocationId) && (
-              <p className="text-xs text-muted-foreground truncate">
-                {formatLocationDisplay(locations.find((loc) => loc.id === selectedLocationId))}
-              </p>
-            )}
           </div>
         </div>
 
@@ -1483,6 +1479,12 @@ export default function Admin() {
       {/* User Documents Dialog */}
       <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" size="sm" className="gap-1 pl-0 text-muted-foreground hover:text-foreground" onClick={() => setIsDocumentDialogOpen(false)}>
+              <ChevronLeft className="h-4 w-4" />
+              Go Back
+            </Button>
+          </div>
           <DialogHeader>
             <DialogTitle>User Documents Review</DialogTitle>
             <DialogDescription>

@@ -3,7 +3,7 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bike, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react';
+import { Bike, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { authAPI } from '@/lib/api';
 
@@ -11,7 +11,6 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -29,7 +28,6 @@ export default function Auth() {
   useEffect(() => {
     const mode = searchParams.get('mode');
     setIsLogin(mode !== 'signup');
-    setIsAdmin(searchParams.get('admin') === 'true');
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,7 +141,7 @@ export default function Auth() {
     if (isForgotPassword) {
       return isResetting ? 'Reset Password' : 'Forgot Password';
     }
-    return isAdmin ? (isLogin ? 'Admin Login' : 'Admin Portal') : (isLogin ? 'Welcome back' : 'Create account');
+    return isLogin ? 'Welcome back' : 'Create account';
   };
 
   const getSubHeaderText = () => {
@@ -184,14 +182,6 @@ export default function Auth() {
               {getSubHeaderText()}
             </p>
           </div>
-
-          {/* Admin Badge */}
-          {isAdmin && !isForgotPassword && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-secondary/50 border border-border mb-6">
-              <Shield className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">Admin Portal</span>
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -311,18 +301,6 @@ export default function Auth() {
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
-            </p>
-          )}
-
-          {/* Admin Link */}
-          {!isAdmin && !isForgotPassword && (
-            <p className="mt-4 text-center text-sm">
-              <Link
-                to="/auth?admin=true"
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
-                Admin login →
-              </Link>
             </p>
           )}
         </div>

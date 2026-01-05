@@ -111,8 +111,28 @@ export default function SuperAdmin() {
   const [editingLocation, setEditingLocation] = useState<any | null>(null);
   const [locationForm, setLocationForm] = useState<any>({ name: '', city: '', state: '', country: '' });
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>('all');
+  const [documentsSort, setDocumentsSort] = useState<'newest' | 'oldest'>('newest');
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Auto-refresh users/documents while on Documents tab to reflect latest profile updates
+  useEffect(() => {
+    if (activeTab !== 'documents') return;
+    const interval = setInterval(async () => {
+      try {
+        const [usersData, docsData] = await Promise.all([usersAPI.getAll(), documentsAPI.getAll()]);
+        setUsers(usersData);
+        setDocuments(docsData);
+      } catch {
+        // Silent fail to avoid toast spam
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   const setTab = (tabId: string) => {
     setActiveTab(tabId);
@@ -319,23 +339,22 @@ export default function SuperAdmin() {
     }
   };
 
-  const handleViewUserDocuments = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) {
+  const handleViewUserDocuments = async (userId: string) => {
+    try {
+      const freshUser = await usersAPI.getById(userId);
+      const userDocs = documents.filter(d => d.userId === userId);
+      const userRentals = rentals
+        .filter(r => r.userId === userId)
+        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      setSelectedDocumentUser({ ...freshUser, documents: userDocs, rentals: userRentals });
+      setIsDocumentDialogOpen(true);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "User not found",
+        description: error.message || "Failed to load user",
         variant: "destructive",
       });
-      return;
     }
-    // Get user documents from the documents array
-    const userDocs = documents.filter(d => d.userId === userId);
-    // Get user rentals
-    const userRentals = rentals.filter(r => r.userId === userId).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-    
-    setSelectedDocumentUser({ ...user, documents: userDocs, rentals: userRentals });
-    setIsDocumentDialogOpen(true);
   };
 
   const handleVerifyUser = async (userId: string) => {
@@ -397,29 +416,33 @@ export default function SuperAdmin() {
           ))}
         </nav>
 
-        {/* Footer Actions */}
-        <div className="mt-4 space-y-2">
+        {/* User Info & Actions */}
+        <div className="space-y-2 pt-4 border-t border-border">
+          <div className="px-4 py-2 text-sm">
+            <p className="font-medium">{currentUser?.name}</p>
+            <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+          </div>
           {mounted && (
             <Button
-              variant="outline"
-              className="w-full"
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
               {theme === 'dark' ? (
                 <>
-                  <Sun className="h-4 w-4 mr-2" />
+                  <Sun className="h-5 w-5" />
                   Light Mode
                 </>
               ) : (
                 <>
-                  <Moon className="h-4 w-4 mr-2" />
+                  <Moon className="h-5 w-5" />
                   Dark Mode
                 </>
               )}
             </Button>
           )}
-          <Button variant="outline" className="w-full" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
+          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
+            <LogOut className="h-5 w-5" />
             Logout
           </Button>
         </div>
@@ -465,22 +488,26 @@ export default function SuperAdmin() {
                 </nav>
               </div>
 
-              <div className="mt-auto p-4 border-t border-border space-y-2">
+              <div className="mt-auto space-y-2 pt-4 border-t border-border">
+                <div className="px-4 py-2 text-sm">
+                  <p className="font-medium">{currentUser?.name}</p>
+                  <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                </div>
                 {mounted && (
                   <SheetClose asChild>
                     <Button
-                      variant="outline"
-                      className="w-full"
+                      variant="ghost"
+                      className="w-full justify-start gap-3 text-muted-foreground"
                       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                     >
                       {theme === 'dark' ? (
                         <>
-                          <Sun className="h-4 w-4 mr-2" />
+                          <Sun className="h-5 w-5" />
                           Light Mode
                         </>
                       ) : (
                         <>
-                          <Moon className="h-4 w-4 mr-2" />
+                          <Moon className="h-5 w-5" />
                           Dark Mode
                         </>
                       )}
@@ -488,8 +515,8 @@ export default function SuperAdmin() {
                   </SheetClose>
                 )}
                 <SheetClose asChild>
-                  <Button variant="outline" className="w-full" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
+                  <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
+                    <LogOut className="h-5 w-5" />
                     Logout
                   </Button>
                 </SheetClose>
@@ -1240,14 +1267,25 @@ export default function SuperAdmin() {
               <p className="text-muted-foreground">Review and approve user-submitted documents grouped by user.</p>
             </div>
 
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Search users or document type..."
-                className="pl-10"
-                value={documentsSearchQuery}
-                onChange={(e) => setDocumentsSearchQuery(e.target.value)}
-              />
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative max-w-md w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Search users or document type..."
+                  className="pl-10"
+                  value={documentsSearchQuery}
+                  onChange={(e) => setDocumentsSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={documentsSort} onValueChange={(v: any) => setDocumentsSort(v)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by Date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-4">
@@ -1297,7 +1335,11 @@ export default function SuperAdmin() {
                 };
 
                 const sortedUsersWithDocs = [...filteredUsersWithDocs].sort(
-                  (a, b) => latestDocTime(b.id) - latestDocTime(a.id)
+                  (a, b) => {
+                    const timeA = latestDocTime(a.id);
+                    const timeB = latestDocTime(b.id);
+                    return documentsSort === 'newest' ? timeB - timeA : timeA - timeB;
+                  }
                 );
                 
                 if (sortedUsersWithDocs.length === 0) {

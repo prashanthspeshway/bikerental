@@ -203,8 +203,8 @@ export const rentalsAPI = {
 };
 
 export const usersAPI = {
-  getAll: () => apiRequest<any[]>('/users'),
-  getById: (id: string) => apiRequest<any>(`/users/${id}`),
+  getAll: () => apiRequest<any[]>(`/users?_t=${Date.now()}`),
+  getById: (id: string) => apiRequest<any>(`/users/${id}?_t=${Date.now()}`),
   update: (id: string, updates: any) => apiRequest<any>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
   createAdmin: (payload: { name: string; email: string; password: string; locationId: string }) =>
     apiRequest<any>('/users/create-admin', { method: 'POST', body: JSON.stringify(payload) }),
@@ -214,7 +214,7 @@ export const usersAPI = {
 };
 
 export const documentsAPI = {
-  getAll: () => apiRequest<any[]>('/documents'),
+  getAll: () => apiRequest<any[]>(`/documents?_t=${Date.now()}`),
   upload: (name: string, type: string, fileUrl: string | undefined) =>
     apiRequest<any>('/documents', { method: 'POST', body: JSON.stringify({ name, type, url: fileUrl }) }),
   getUploadUrl: (name: string, type: string, contentType: string) =>
