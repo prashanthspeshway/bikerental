@@ -526,6 +526,43 @@ export default function Garage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
+                  <Label className="text-sm">Search bikes</Label>
+                  <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search bikes..."
+                      className="pl-9 w-full"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm">Model</Label>
+                  <div className="relative -mx-2 w-full">
+                    <div className="overflow-x-auto whitespace-nowrap px-2">
+                      <ToggleGroup
+                        type="single"
+                        value={selectedType}
+                        onValueChange={(val) => setSelectedType(val || 'all')}
+                        className="inline-flex gap-2"
+                      >
+                        {bikeTypes.map((t) => (
+                          <ToggleGroupItem
+                            key={t.value}
+                            value={t.value}
+                            variant="default"
+                            size="sm"
+                            className="min-w-max rounded-full h-9 px-4 bg-muted text-foreground border border-input data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
+                          >
+                            {t.label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                    </div>
+                  </div>
+                </div>
+                <div>
                   <Label className="text-sm">Pickup</Label>
                   <div className="flex items-center gap-2">
                     <Input 

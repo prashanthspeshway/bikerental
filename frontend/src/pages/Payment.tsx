@@ -135,6 +135,14 @@ export default function Payment() {
 
   const handlePayment = async () => {
     try {
+      if (filledSlots < MAX_IMAGES) {
+        toast({
+          title: 'Images Required',
+          description: `Please upload all ${MAX_IMAGES} bike images before payment.`,
+          variant: 'destructive',
+        });
+        return;
+      }
       setLoading(true);
       const { keyId } = await paymentsAPI.getKey();
       const order = await paymentsAPI.createOrder(totalAmount);
@@ -261,7 +269,7 @@ export default function Payment() {
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload up to {MAX_IMAGES} bike images before payment ({filledSlots}/{MAX_IMAGES} uploaded).
+                  Upload all {MAX_IMAGES} bike images to proceed ({filledSlots}/{MAX_IMAGES} uploaded).
                 </p>
               </div>
               <div className="flex justify-between">
@@ -287,7 +295,7 @@ export default function Payment() {
                 className="w-full" 
                 size="lg" 
                 onClick={handlePayment}
-                disabled={loading}
+                disabled={loading || filledSlots < MAX_IMAGES}
               >
                 {loading ? 'Processing...' : `Pay ₹${totalAmount.toFixed(2)}`}
               </Button>
