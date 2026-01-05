@@ -78,7 +78,10 @@ export default function Index() {
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold leading-tight">
                 Ride the City
-                <span className="block text-gradient">Your Way</span>
+                <span className="block relative inline-block pb-2">
+                  <span className="relative z-10 text-foreground">Your Way</span>
+                  <span className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-primary to-primary/60 rounded-sm"></span>
+                </span>
               </h1>
 
               <p className="text-lg text-muted-foreground max-w-lg">

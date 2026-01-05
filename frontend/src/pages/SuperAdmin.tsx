@@ -25,10 +25,13 @@ import {
   Mail,
   Phone,
   Calendar,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { bikesAPI, usersAPI, documentsAPI, rentalsAPI, authAPI, getCurrentUser, locationsAPI } from '@/lib/api';
 import { Bike as BikeType } from '@/types';
+import { useTheme } from 'next-themes';
 import {
   Dialog,
   DialogContent,
@@ -108,6 +111,8 @@ export default function SuperAdmin() {
   const [editingLocation, setEditingLocation] = useState<any | null>(null);
   const [locationForm, setLocationForm] = useState<any>({ name: '', city: '', state: '', country: '' });
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>('all');
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const setTab = (tabId: string) => {
     setActiveTab(tabId);
@@ -393,7 +398,26 @@ export default function SuperAdmin() {
         </nav>
 
         {/* Footer Actions */}
-        <div className="mt-4">
+        <div className="mt-4 space-y-2">
+          {mounted && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="h-4 w-4 mr-2" />
+                  Light Mode
+                </>
+              ) : (
+                <>
+                  <Moon className="h-4 w-4 mr-2" />
+                  Dark Mode
+                </>
+              )}
+            </Button>
+          )}
           <Button variant="outline" className="w-full" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
             Logout
@@ -441,7 +465,28 @@ export default function SuperAdmin() {
                 </nav>
               </div>
 
-              <div className="mt-auto p-4 border-t border-border">
+              <div className="mt-auto p-4 border-t border-border space-y-2">
+                {mounted && (
+                  <SheetClose asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    >
+                      {theme === 'dark' ? (
+                        <>
+                          <Sun className="h-4 w-4 mr-2" />
+                          Light Mode
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="h-4 w-4 mr-2" />
+                          Dark Mode
+                        </>
+                      )}
+                    </Button>
+                  </SheetClose>
+                )}
                 <SheetClose asChild>
                   <Button variant="outline" className="w-full" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 mr-2" />

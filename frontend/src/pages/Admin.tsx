@@ -26,10 +26,18 @@ import {
   Phone,
   Calendar,
   Wrench,
+  Download,
+  Maximize2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { bikesAPI, usersAPI, documentsAPI, rentalsAPI, authAPI, getCurrentUser, locationsAPI } from '@/lib/api';
 import { Bike as BikeType } from '@/types';
+import { useTheme } from 'next-themes';
 import {
   Dialog,
   DialogContent,
@@ -86,6 +94,9 @@ export default function Admin() {
   const [allVehiclesSearchQuery, setAllVehiclesSearchQuery] = useState('');
   const [viewImagesDialog, setViewImagesDialog] = useState(false);
   const [selectedRentalImages, setSelectedRentalImages] = useState<string[]>([]);
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const setTab = (tabId: string) => {
     setActiveTab(tabId);
@@ -100,6 +111,10 @@ export default function Admin() {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -413,12 +428,31 @@ export default function Admin() {
           ))}
         </nav>
 
-        {/* User Info & Logout */}
+        {/* User Info & Actions */}
         <div className="space-y-2 pt-4 border-t border-border">
           <div className="px-4 py-2 text-sm">
             <p className="font-medium">{currentUser?.name}</p>
             <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
           </div>
+          {mounted && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="h-5 w-5" />
+                  Light Mode
+                </>
+              ) : (
+                <>
+                  <Moon className="h-5 w-5" />
+                  Dark Mode
+                </>
+              )}
+            </Button>
+          )}
           <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
             Logout
@@ -485,6 +519,27 @@ export default function Admin() {
                     <p className="font-medium">{currentUser?.name}</p>
                     <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
                   </div>
+                  {mounted && (
+                    <SheetClose asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-3 text-muted-foreground"
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                      >
+                        {theme === 'dark' ? (
+                          <>
+                            <Sun className="h-5 w-5" />
+                            Light Mode
+                          </>
+                        ) : (
+                          <>
+                            <Moon className="h-5 w-5" />
+                            Dark Mode
+                          </>
+                        )}
+                      </Button>
+                    </SheetClose>
+                  )}
                   <SheetClose asChild>
                     <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
                       <LogOut className="h-5 w-5" />
@@ -1574,15 +1629,53 @@ export default function Admin() {
       </Dialog>
 
       <Dialog open={viewImagesDialog} onOpenChange={setViewImagesDialog}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Rental Images</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 max-h-[60vh] overflow-y-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 max-h-[70vh] overflow-y-auto">
             {selectedRentalImages && selectedRentalImages.length > 0 ? (
               selectedRentalImages.map((img, idx) => (
-                <div key={idx} className="relative aspect-video bg-muted rounded-lg overflow-hidden border">
-                  <img src={img} alt={`Rental image ${idx + 1}`} className="object-cover w-full h-full" />
+                <div key={idx} className="relative aspect-video bg-muted rounded-lg overflow-hidden border group">
+                  <img 
+                    src={img} 
+                    alt={`Rental image ${idx + 1}`} 
+                    className="object-cover w-full h-full cursor-pointer"
+                    onClick={() => setFullScreenImageIndex(idx)}
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFullScreenImageIndex(idx);
+                      }}
+                      className="bg-white hover:bg-gray-100 text-black font-semibold border border-gray-300 shadow-lg"
+                    >
+                      <Maximize2 className="h-4 w-4 mr-1 text-black" />
+                      <span className="text-black">View</span>
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const link = document.createElement('a');
+                        link.href = img;
+                        link.download = `rental-image-${idx + 1}.jpg`;
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        toast({ title: 'Download started', description: 'Image download initiated' });
+                      }}
+                      className="bg-white hover:bg-gray-100 text-black font-semibold border border-gray-300 shadow-lg"
+                    >
+                      <Download className="h-4 w-4 mr-1 text-black" />
+                      <span className="text-black">Download</span>
+                    </Button>
+                  </div>
                 </div>
               ))
             ) : (
@@ -1593,6 +1686,80 @@ export default function Admin() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Full Screen Image Viewer */}
+      {fullScreenImageIndex !== null && selectedRentalImages[fullScreenImageIndex] && (
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 text-white bg-black/70 hover:bg-black/90 border border-white/20 z-10 shadow-lg"
+              onClick={() => setFullScreenImageIndex(null)}
+            >
+              <X className="h-6 w-6 text-white" />
+            </Button>
+
+            {/* Previous Button */}
+            {fullScreenImageIndex > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-4 text-white bg-black/70 hover:bg-black/90 border border-white/20 z-10 shadow-lg"
+                onClick={() => setFullScreenImageIndex(fullScreenImageIndex - 1)}
+              >
+                <ChevronLeft className="h-8 w-8 text-white" />
+              </Button>
+            )}
+
+            {/* Next Button */}
+            {fullScreenImageIndex < selectedRentalImages.length - 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 text-white bg-black/70 hover:bg-black/90 border border-white/20 z-10 shadow-lg"
+                onClick={() => setFullScreenImageIndex(fullScreenImageIndex + 1)}
+              >
+                <ChevronRight className="h-8 w-8 text-white" />
+              </Button>
+            )}
+
+            {/* Image */}
+            <img
+              src={selectedRentalImages[fullScreenImageIndex]}
+              alt={`Rental image ${fullScreenImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {/* Download Button */}
+            <Button
+              variant="secondary"
+              size="lg"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white text-black hover:bg-gray-100 shadow-lg border-2 border-white/50 font-semibold"
+              onClick={() => {
+                const img = selectedRentalImages[fullScreenImageIndex];
+                const link = document.createElement('a');
+                link.href = img;
+                link.download = `rental-image-${fullScreenImageIndex + 1}.jpg`;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: 'Download started', description: 'Image download initiated' });
+              }}
+            >
+              <Download className="h-5 w-5 mr-2 text-black" />
+              <span className="text-black font-semibold">Download Image</span>
+            </Button>
+
+            {/* Image Counter */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white bg-black/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20 shadow-lg font-semibold text-lg">
+              {fullScreenImageIndex + 1} / {selectedRentalImages.length}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

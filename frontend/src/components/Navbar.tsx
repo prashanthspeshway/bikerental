@@ -15,11 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bike, User, Menu, X, LogOut, MapPin, Activity } from 'lucide-react';
+import { Bike, User, Menu, X, LogOut, MapPin, Activity, Moon, Sun } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getCurrentUser, authAPI, locationsAPI, rentalsAPI } from '@/lib/api';
 import { Location } from '@/types';
 import { safeAsync, isAuthError } from '@/lib/errorHandler';
+import { useTheme } from 'next-themes';
 
 // Helper function to format location name for display (removes "Main Garage" suffix)
 const formatLocationDisplay = (loc: any): string => {
@@ -34,8 +35,14 @@ export function Navbar() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [activeRide, setActiveRide] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -209,6 +216,23 @@ export function Navbar() {
               </Select>
             )}
 
+            {/* Dark Mode Toggle */}
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="w-9 h-9 p-0"
+                aria-label="Toggle dark mode"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+
             {user ? (
               <>
                 {user.role === 'admin' && (
@@ -337,6 +361,27 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+              
+              {/* Dark Mode Toggle for Mobile */}
+              {mounted && (
+                <div className="flex items-center justify-between py-2 border-t border-border">
+                  <span className="font-medium">Dark Mode</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="w-9 h-9 p-0"
+                    aria-label="Toggle dark mode"
+                  >
+                    {theme === 'dark' ? (
+                      <Sun className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              )}
+              
               <div className="flex gap-3 pt-4 border-t border-border">
                 {user ? (
                   <>

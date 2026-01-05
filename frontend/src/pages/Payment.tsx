@@ -7,7 +7,7 @@ import { Footer } from '@/components/Footer';
 import { getCurrentUser, paymentsAPI, documentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 
 interface BookingDetails {
   bike: Bike;
@@ -17,13 +17,15 @@ interface BookingDetails {
   totalAmount: number;
 }
 
+const MAX_IMAGES = 5;
+
 export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [extraImages, setExtraImages] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [extraImages, setExtraImages] = useState<(string | null)[]>(Array(MAX_IMAGES).fill(null));
+  const [uploading, setUploading] = useState<number | null>(null);
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>(Array(MAX_IMAGES).fill(null));
   
   const bookingDetails = location.state?.bookingDetails as BookingDetails;
 
@@ -83,35 +85,53 @@ export default function Payment() {
 
   const { bike, pickupTime, dropoffTime, durationHours, totalAmount } = bookingDetails;
 
-  const onPickFiles = () => {
-    fileInputRef.current?.click();
+  const onPickFile = (index: number) => {
+    fileInputRefs.current[index]?.click();
   };
 
-  const onFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  const onFileSelected = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check if slot is already filled
+    if (extraImages[index]) {
+      toast({ title: 'Slot already filled', description: 'Please remove the existing image first', variant: 'destructive' });
+      return;
+    }
+
     try {
-      setUploading(true);
-      const uploadedUrls: string[] = [];
-      for (const file of files) {
-        const res = await documentsAPI.uploadFile(file, file.name, 'rental_bike_image');
-        if (res?.fileUrl) {
-          uploadedUrls.push(res.fileUrl);
-        } else if (res?.url) {
-          uploadedUrls.push(res.url);
-        }
-      }
-      if (uploadedUrls.length > 0) {
-        setExtraImages((prev) => [...prev, ...uploadedUrls]);
-        toast({ title: 'Images uploaded', description: `${uploadedUrls.length} image(s) added` });
+      setUploading(index);
+      const res = await documentsAPI.uploadFile(file, file.name, 'rental_bike_image');
+      const imageUrl = res?.fileUrl || res?.url;
+      
+      if (imageUrl) {
+        setExtraImages((prev) => {
+          const newImages = [...prev];
+          newImages[index] = imageUrl;
+          return newImages;
+        });
+        toast({ title: 'Image uploaded', description: 'Image added successfully' });
+      } else {
+        toast({ title: 'Upload failed', description: 'No file URL returned', variant: 'destructive' });
       }
     } catch (err: any) {
-      toast({ title: 'Upload error', description: err.message || 'Failed to upload images', variant: 'destructive' });
+      toast({ title: 'Upload error', description: err.message || 'Failed to upload image', variant: 'destructive' });
     } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploading(null);
+      if (fileInputRefs.current[index]) fileInputRefs.current[index]!.value = '';
     }
   };
+
+  const removeImage = (index: number) => {
+    setExtraImages((prev) => {
+      const newImages = [...prev];
+      newImages[index] = null;
+      return newImages;
+    });
+  };
+
+  const filledSlots = extraImages.filter(img => img !== null).length;
+  const canAddMore = filledSlots < MAX_IMAGES;
 
   const handlePayment = async () => {
     try {
@@ -138,7 +158,7 @@ export default function Payment() {
                 dropoffTime,
                 totalAmount,
                 selectedLocationId,
-                additionalImages: extraImages
+                additionalImages: extraImages.filter((img): img is string => img !== null)
               }
             });
             
@@ -188,53 +208,60 @@ export default function Payment() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2">
                   <span className="font-medium">Bike Images</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onPickFiles}
-                    disabled={uploading}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {uploading ? 'Uploading...' : 'Add Images'}
-                  </Button>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={onFilesSelected}
-                />
-                <div className="flex gap-3 flex-wrap">
-                  {bike.image && (
-                    <img
-                      src={bike.image}
-                      alt={bike.name}
-                      className="w-20 h-20 object-cover rounded-md border"
-                    />
-                  )}
-                  {extraImages.map((url, idx) => (
-                    <img
-                      key={`${url}-${idx}`}
-                      src={url}
-                      alt={`Extra ${idx + 1}`}
-                      className="w-20 h-20 object-cover rounded-md border"
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    onClick={onPickFiles}
-                    className="w-20 h-20 rounded-md border border-dashed flex items-center justify-center text-muted-foreground hover:bg-muted/50"
-                    aria-label="Add image"
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
+                <div className="grid grid-cols-5 gap-3">
+                  {Array.from({ length: MAX_IMAGES }).map((_, index) => {
+                    const imageUrl = extraImages[index];
+                    const isUploading = uploading === index;
+                    return (
+                      <div key={index} className="relative">
+                        <input
+                          ref={(el) => { fileInputRefs.current[index] = el; }}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => onFileSelected(index, e)}
+                          disabled={isUploading || !!imageUrl}
+                        />
+                        {imageUrl ? (
+                          <div className="relative w-20 h-20 rounded-md border overflow-hidden group">
+                            <img
+                              src={imageUrl}
+                              alt={`Upload ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              aria-label="Remove image"
+                            >
+                              <X className="h-5 w-5 text-white" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onPickFile(index)}
+                            disabled={isUploading}
+                            className="w-20 h-20 rounded-md border border-dashed flex items-center justify-center text-muted-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Add image"
+                          >
+                            {isUploading ? (
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            ) : (
+                              <Plus className="h-6 w-6" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload any extra bike images before payment.
+                  Upload up to {MAX_IMAGES} bike images before payment ({filledSlots}/{MAX_IMAGES} uploaded).
                 </p>
               </div>
               <div className="flex justify-between">
