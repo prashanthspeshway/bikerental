@@ -94,6 +94,13 @@ router.post('/verify', authenticateToken, async (req, res) => {
     
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    if (selectedLocationId && user.currentLocationId && user.currentLocationId.toString() !== String(selectedLocationId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Selected location must match your current location in profile.' 
+      });
+    }
 
     // Check if all documents are verified
     const hasDocuments = user.documents && user.documents.length > 0;

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Bike } from '@/types';
 import { Search, Zap, Gauge, Bike as BikeIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { bikesAPI, rentalsAPI, getCurrentUser, documentsAPI } from '@/lib/api';
+import { bikesAPI, rentalsAPI, getCurrentUser, documentsAPI, authAPI } from '@/lib/api';
 
 const bikeTypes = [
   { value: 'all', label: 'All Models', icon: null },
@@ -249,6 +249,21 @@ export default function Garage() {
         return;
       }
     }
+    
+    try {
+      const profile = await authAPI.getCurrentUser();
+      const userLocId = profile?.currentLocationId ? String(profile.currentLocationId) : '';
+      const navLocId = selectedLocationId || '';
+      if (userLocId && navLocId && userLocId !== navLocId) {
+        toast({
+          title: 'Location Mismatch',
+          description: 'Navbar location and your current location must be the same to book.',
+          variant: 'destructive',
+        });
+        setIsBookingConfirmationOpen(false);
+        return;
+      }
+    } catch {}
     
     // Calculate duration and amount
     const start = new Date(`${pickupDate}T${pickupTime}`);

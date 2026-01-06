@@ -114,6 +114,13 @@ export function Navbar() {
       }
     }
 
+    const profile = await safeAsync(() => authAPI.getCurrentUser(), null, 'loadUser');
+    const userLocId = profile?.currentLocationId ? String(profile.currentLocationId) : '';
+    if (userLocId && ids.has(userLocId)) {
+      nextLocationId = userLocId;
+      localStorage.setItem('selectedLocation', userLocId);
+    }
+
     if (!nextLocationId && data.length > 0) {
       nextLocationId = data[0].id;
       localStorage.setItem('selectedLocation', nextLocationId);

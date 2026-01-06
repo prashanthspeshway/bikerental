@@ -296,11 +296,18 @@ export default function SuperAdmin() {
         return bike && getBikeLocationId(bike) === selectedLocationFilter;
       });
 
-  // Users are global - not filtered by location
-  const filteredUsers = users.filter((u) => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Users are global - show only regular users
+  const filteredUsers = users
+    .filter((u) => u.role === 'user')
+    .filter((u) =>
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const ta = new Date(a.createdAt as any).getTime();
+      const tb = new Date(b.createdAt as any).getTime();
+      return tb - ta;
+    });
 
   // Documents are global - not filtered by location
   const filteredDocuments = documents;

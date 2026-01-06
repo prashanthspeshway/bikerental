@@ -7,7 +7,7 @@ import { Footer } from '@/components/Footer';
 import { getCurrentUser, paymentsAPI, documentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
-import { Plus, X } from 'lucide-react';
+import { Camera, X } from 'lucide-react';
 
 interface BookingDetails {
   bike: Bike;
@@ -229,6 +229,7 @@ export default function Payment() {
                           ref={(el) => { fileInputRefs.current[index] = el; }}
                           type="file"
                           accept="image/*"
+                          capture="environment"
                           className="hidden"
                           onChange={(e) => onFileSelected(index, e)}
                           disabled={isUploading || !!imageUrl}
@@ -260,7 +261,7 @@ export default function Payment() {
                             {isUploading ? (
                               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                             ) : (
-                              <Plus className="h-6 w-6" />
+                              <Camera className="h-6 w-6" />
                             )}
                           </button>
                         )}
