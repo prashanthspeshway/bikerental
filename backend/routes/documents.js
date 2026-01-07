@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
+import Location from '../models/Location.js';
 import { createPresignedUpload } from '../utils/s3.js';
 import multer from 'multer';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -19,7 +20,28 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // If admin, return all documents from all users with user info
     if (['admin', 'superadmin'].includes(currentUser.role)) {
-      const users = await User.find().select('name email documents');
+      let query = {};
+
+      // If admin (not superadmin), filter by location
+      if (currentUser.role === 'admin' && currentUser.locationId) {
+        try {
+          const loc = await Location.findById(currentUser.locationId).select('city');
+          if (loc?.city) {
+            const esc = String(loc.city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const cityRegex = new RegExp(`^${esc}(\\b|\\s|\\s-| -)?`, 'i');
+            query.$or = [
+              { currentLocationId: currentUser.locationId },
+              { currentAddress: cityRegex },
+            ];
+          } else {
+            query.currentLocationId = currentUser.locationId;
+          }
+        } catch {
+          query.currentLocationId = currentUser.locationId;
+        }
+      }
+
+      const users = await User.find(query).select('name email documents currentLocationId currentAddress');
       const allDocuments = [];
       
       users.forEach(user => {

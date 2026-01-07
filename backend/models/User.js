@@ -13,9 +13,33 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   name: { type: String, required: true },
   password: { type: String, required: true },
-  mobile: { type: String, default: '' },
-  emergencyContact: { type: String, default: '' },
-  familyContact: { type: String, default: '' },
+  mobile: {
+    type: String,
+    default: '',
+    trim: true,
+    validate: {
+      validator: (v) => v === '' || /^[6-9]\d{9}$/.test(v),
+      message: 'Invalid mobile number',
+    },
+  },
+  emergencyContact: {
+    type: String,
+    default: '',
+    trim: true,
+    validate: {
+      validator: (v) => v === '' || /^[6-9]\d{9}$/.test(v),
+      message: 'Invalid emergency contact number',
+    },
+  },
+  familyContact: {
+    type: String,
+    default: '',
+    trim: true,
+    validate: {
+      validator: (v) => v === '' || /^[6-9]\d{9}$/.test(v),
+      message: 'Invalid family contact number',
+    },
+  },
   permanentAddress: { type: String, default: '' },
   currentAddress: { type: String, default: '' },
   currentLocationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', default: null },

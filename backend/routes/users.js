@@ -17,7 +17,25 @@ router.get('/', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const users = await User.find().select('-password');
+    let query = {};
+    if (currentUser.role === 'admin' && currentUser.locationId) {
+      try {
+        const loc = await Location.findById(currentUser.locationId).select('city');
+        if (loc?.city) {
+          const cityRegex = new RegExp(`^${escapeRegex(loc.city)}(\\b|\\s|\\s-| -)?`, 'i');
+          query.$or = [
+            { currentLocationId: currentUser.locationId },
+            { currentAddress: cityRegex },
+          ];
+        } else {
+          query.currentLocationId = currentUser.locationId;
+        }
+      } catch {
+        query.currentLocationId = currentUser.locationId;
+      }
+    }
+
+    const users = await User.find(query).select('-password');
     // Transform _id to id for frontend compatibility
     const transformedUsers = users.map(transformUser);
     res.json(transformedUsers);

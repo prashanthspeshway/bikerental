@@ -330,20 +330,29 @@ export default function Admin() {
     { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary' },
   ];
 
-  // Filter rentals by admin's location - only show rentals for bikes in admin's location
   const rentalsForLocation = rentals.filter((r) => {
     const bike = bikesById[r.bikeId] || r.bike;
-    if (!bike) return false; // Don't show rentals if bike not found
-    if (!selectedLocationId) return false; // Don't show rentals if no location selected
+    if (!bike) return false;
+    if (!selectedLocationId) return false;
     const bikeLocationId =
       typeof bike.locationId === 'object'
         ? bike.locationId?.id || bike.locationId?._id || bike.locationId?.toString?.()
         : bike.locationId;
     return bikeLocationId ? bikeLocationId === selectedLocationId : false;
   });
-  const userIdsForLocation = new Set(rentalsForLocation.map(r => r.userId));
-  const filteredUsers = users
-    .filter(user => userIdsForLocation.has(user.id))
+
+  const selectedCity = String(locations.find((l) => l.id === selectedLocationId)?.city || '').trim().toLowerCase();
+  // Filter users strictly by their current location (ID match or city match)
+  const usersForLocation = users.filter((user) => {
+    const userLocId = String(user.currentLocationId || '').trim();
+    if (selectedLocationId) {
+      if (userLocId && userLocId === selectedLocationId) return true;
+    }
+    if (!selectedCity) return false;
+    const addr = String(user.currentAddress || '').trim().toLowerCase();
+    return addr === selectedCity || addr.startsWith(`${selectedCity} -`);
+  });
+  const filteredUsers = usersForLocation
     .filter(user => {
       if (userStatusFilter === 'active') return user.isVerified;
       if (userStatusFilter === 'pending') return !user.isVerified;
@@ -354,7 +363,6 @@ export default function Admin() {
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   const userById: Record<string, any> = Object.fromEntries(users.map((u) => [u.id, u]));
-  const selectedCity = String(locations.find((l) => l.id === selectedLocationId)?.city || '').trim().toLowerCase();
   const documentsForLocation = selectedLocationId
     ? documents.filter((d) => {
         const docUser = userById[d.userId];

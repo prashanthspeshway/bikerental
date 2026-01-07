@@ -172,10 +172,27 @@ export default function Dashboard() {
     if (!user) return;
 
     const mobileRegex = /^[6-9]\d{9}$/;
+    const contactRegex = /^[6-9]\d{9}$/;
     if (!mobileRegex.test(formData.mobile)) {
       toast({
         title: "Invalid Mobile Number",
         description: "Mobile number must be 10 digits and start with 6, 7, 8, or 9.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!contactRegex.test(formData.emergencyContact)) {
+      toast({
+        title: "Invalid Emergency Contact",
+        description: "Emergency contact must be 10 digits and start with 6, 7, 8, or 9.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!contactRegex.test(formData.familyContact)) {
+      toast({
+        title: "Invalid Family Contact",
+        description: "Family contact must be 10 digits and start with 6, 7, 8, or 9.",
         variant: "destructive",
       });
       return;
@@ -479,30 +496,57 @@ export default function Dashboard() {
                       <Input
                         id="mobile"
                         type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        pattern="^[6-9]\\d{9}$"
                         value={formData.mobile}
-                        onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setFormData(prev => ({ ...prev, mobile: digits }));
+                        }}
                         placeholder="Enter your mobile number"
                       />
+                      {formData.mobile && !/^[6-9]\d{9}$/.test(formData.mobile) && (
+                        <p className="text-xs text-destructive">Enter 10 digits starting with 6, 7, 8, or 9</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="emergencyContact">Emergency Contact</Label>
                       <Input
                         id="emergencyContact"
                         type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        pattern="^[6-9]\\d{9}$"
                         value={formData.emergencyContact}
-                        onChange={(e) => setFormData(prev => ({ ...prev, emergencyContact: e.target.value }))}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setFormData(prev => ({ ...prev, emergencyContact: digits }));
+                        }}
                         placeholder="Enter emergency contact number"
                       />
+                      {formData.emergencyContact && !/^[6-9]\d{9}$/.test(formData.emergencyContact) && (
+                        <p className="text-xs text-destructive">Enter 10 digits starting with 6, 7, 8, or 9</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="familyContact">Family Contact</Label>
                       <Input
                         id="familyContact"
                         type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        pattern="^[6-9]\\d{9}$"
                         value={formData.familyContact}
-                        onChange={(e) => setFormData(prev => ({ ...prev, familyContact: e.target.value }))}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setFormData(prev => ({ ...prev, familyContact: digits }));
+                        }}
                         placeholder="Enter family contact number"
                       />
+                      {formData.familyContact && !/^[6-9]\d{9}$/.test(formData.familyContact) && (
+                        <p className="text-xs text-destructive">Enter 10 digits starting with 6, 7, 8, or 9</p>
+                      )}
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="permanentAddress">Permanent Address</Label>
@@ -574,12 +618,13 @@ export default function Dashboard() {
                     
                     {(() => {
                       const mobileRegex = /^[6-9]\d{9}$/;
+                      const contactRegex = /^[6-9]\d{9}$/;
                       const isProfileComplete = 
                         formData.name && 
                         formData.mobile && mobileRegex.test(formData.mobile) &&
                         formData.email && 
-                        formData.emergencyContact && 
-                        formData.familyContact && 
+                        formData.emergencyContact && contactRegex.test(formData.emergencyContact) &&
+                        formData.familyContact && contactRegex.test(formData.familyContact) &&
                         formData.permanentAddress && 
                         (formData.currentLocationId || formData.currentAddress);
 
