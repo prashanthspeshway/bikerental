@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { getCurrentUser, paymentsAPI, documentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
-import { Camera, X } from 'lucide-react';
+import { Camera, X, Upload, RefreshCw } from 'lucide-react';
 
 interface BookingDetails {
   bike: Bike;
@@ -27,7 +28,82 @@ export default function Payment() {
   const [uploading, setUploading] = useState<number | null>(null);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>(Array(MAX_IMAGES).fill(null));
   
+  // Camera related state
+  const [showCamera, setShowCamera] = useState(false);
+  const [activeCameraIndex, setActiveCameraIndex] = useState<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const bookingDetails = location.state?.bookingDetails as BookingDetails;
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast({ 
+        title: 'Camera Error', 
+        description: 'Unable to access camera. Please try uploading a file instead.', 
+        variant: 'destructive' 
+      });
+      setShowCamera(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || activeCameraIndex === null) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          handleFileProcess(activeCameraIndex, file);
+          setShowCamera(false);
+          stopCamera();
+        }
+      }, 'image/jpeg', 0.8);
+    }
+  };
+
+  const openCamera = (index: number) => {
+    setActiveCameraIndex(index);
+    setShowCamera(true);
+    // Slight delay to ensure modal is open before starting camera
+    setTimeout(startCamera, 100);
+  };
+
+  const handleFileUpload = () => {
+    if (activeCameraIndex !== null) {
+      fileInputRefs.current[activeCameraIndex]?.click();
+      setShowCamera(false);
+      stopCamera();
+    }
+  };
+
 
   useEffect(() => {
     if (!bookingDetails) {
@@ -86,13 +162,10 @@ export default function Payment() {
   const { bike, pickupTime, dropoffTime, durationHours, totalAmount } = bookingDetails;
 
   const onPickFile = (index: number) => {
-    fileInputRefs.current[index]?.click();
+    openCamera(index);
   };
 
-  const onFileSelected = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
+  const handleFileProcess = async (index: number, file: File) => {
     // Check if slot is already filled
     if (extraImages[index]) {
       toast({ title: 'Slot already filled', description: 'Please remove the existing image first', variant: 'destructive' });
@@ -120,6 +193,12 @@ export default function Payment() {
       setUploading(null);
       if (fileInputRefs.current[index]) fileInputRefs.current[index]!.value = '';
     }
+  };
+
+  const onFileSelected = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleFileProcess(index, file);
   };
 
   const removeImage = (index: number) => {
@@ -229,7 +308,6 @@ export default function Payment() {
                           ref={(el) => { fileInputRefs.current[index] = el; }}
                           type="file"
                           accept="image/*"
-                          capture="environment"
                           className="hidden"
                           onChange={(e) => onFileSelected(index, e)}
                           disabled={isUploading || !!imageUrl}
@@ -305,6 +383,38 @@ export default function Payment() {
         </div>
       </div>
       <Footer />
+      <Dialog open={showCamera} onOpenChange={(open) => {
+        if (!open) {
+          setShowCamera(false);
+          stopCamera();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Take Photo</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={handleFileUpload}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload File
+              </Button>
+              <Button className="flex-1" onClick={capturePhoto}>
+                <Camera className="mr-2 h-4 w-4" />
+                Capture
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
