@@ -109,18 +109,20 @@ router.post('/', authenticateToken, async (req, res) => {
       price12Hours,
       pricePerHourOver12,
       pricePerWeek,
-      pricePerHour13,
-      pricePerHour14,
-      pricePerHour15,
-      pricePerHour16,
-      pricePerHour17,
-      pricePerHour18,
-      pricePerHour19,
-      pricePerHour20,
-      pricePerHour21,
-      pricePerHour22,
-      pricePerHour23,
-      pricePerHour24
+      priceBlock1,
+      priceBlock2,
+      priceBlock3,
+      priceBlock4,
+      priceBlock5,
+      priceBlock6,
+      priceBlock7,
+      priceBlock8,
+      priceBlock9,
+      priceBlock10,
+      priceBlock11,
+      priceBlock12,
+      priceBlock13,
+      priceBlock14
     } = req.body;
 
     if (!name || !type || !locationId) {
@@ -150,22 +152,58 @@ router.post('/', authenticateToken, async (req, res) => {
       // Legacy fields (optional if pricingSlabs provided)
       pricePerHour: pricePerHour ? parseFloat(pricePerHour) : undefined,
       kmLimit: kmLimit ? parseInt(kmLimit) : undefined,
-      // New simple pricing model
-      price12Hours: price12Hours ? parseFloat(price12Hours) : undefined,
-      pricePerHourOver12: pricePerHourOver12 ? parseFloat(pricePerHourOver12) : undefined,
-      pricePerWeek: pricePerWeek ? parseFloat(pricePerWeek) : undefined,
-      pricePerHour13: pricePerHour13 ? parseFloat(pricePerHour13) : undefined,
-      pricePerHour14: pricePerHour14 ? parseFloat(pricePerHour14) : undefined,
-      pricePerHour15: pricePerHour15 ? parseFloat(pricePerHour15) : undefined,
-      pricePerHour16: pricePerHour16 ? parseFloat(pricePerHour16) : undefined,
-      pricePerHour17: pricePerHour17 ? parseFloat(pricePerHour17) : undefined,
-      pricePerHour18: pricePerHour18 ? parseFloat(pricePerHour18) : undefined,
-      pricePerHour19: pricePerHour19 ? parseFloat(pricePerHour19) : undefined,
-      pricePerHour20: pricePerHour20 ? parseFloat(pricePerHour20) : undefined,
-      pricePerHour21: pricePerHour21 ? parseFloat(pricePerHour21) : undefined,
-      pricePerHour22: pricePerHour22 ? parseFloat(pricePerHour22) : undefined,
-      pricePerHour23: pricePerHour23 ? parseFloat(pricePerHour23) : undefined,
-      pricePerHour24: pricePerHour24 ? parseFloat(pricePerHour24) : undefined,
+      // New simple pricing model - handle null, 0, and empty strings correctly
+      price12Hours: (price12Hours !== null && price12Hours !== '' && !isNaN(parseFloat(price12Hours))) 
+        ? parseFloat(price12Hours) 
+        : (price12Hours === null ? null : undefined),
+      pricePerHourOver12: (pricePerHourOver12 !== null && pricePerHourOver12 !== '' && !isNaN(parseFloat(pricePerHourOver12))) 
+        ? parseFloat(pricePerHourOver12) 
+        : (pricePerHourOver12 === null ? null : undefined),
+      pricePerWeek: (pricePerWeek !== null && pricePerWeek !== '' && !isNaN(parseFloat(pricePerWeek))) 
+        ? parseFloat(pricePerWeek) 
+        : (pricePerWeek === null ? null : undefined),
+      priceBlock1: (priceBlock1 !== null && priceBlock1 !== '' && !isNaN(parseFloat(priceBlock1))) 
+        ? parseFloat(priceBlock1) 
+        : (priceBlock1 === null ? null : undefined),
+      priceBlock2: (priceBlock2 !== null && priceBlock2 !== '' && !isNaN(parseFloat(priceBlock2))) 
+        ? parseFloat(priceBlock2) 
+        : (priceBlock2 === null ? null : undefined),
+      priceBlock3: (priceBlock3 !== null && priceBlock3 !== '' && !isNaN(parseFloat(priceBlock3))) 
+        ? parseFloat(priceBlock3) 
+        : (priceBlock3 === null ? null : undefined),
+      priceBlock4: (priceBlock4 !== null && priceBlock4 !== '' && !isNaN(parseFloat(priceBlock4))) 
+        ? parseFloat(priceBlock4) 
+        : (priceBlock4 === null ? null : undefined),
+      priceBlock5: (priceBlock5 !== null && priceBlock5 !== '' && !isNaN(parseFloat(priceBlock5))) 
+        ? parseFloat(priceBlock5) 
+        : (priceBlock5 === null ? null : undefined),
+      priceBlock6: (priceBlock6 !== null && priceBlock6 !== '' && !isNaN(parseFloat(priceBlock6))) 
+        ? parseFloat(priceBlock6) 
+        : (priceBlock6 === null ? null : undefined),
+      priceBlock7: (priceBlock7 !== null && priceBlock7 !== '' && !isNaN(parseFloat(priceBlock7))) 
+        ? parseFloat(priceBlock7) 
+        : (priceBlock7 === null ? null : undefined),
+      priceBlock8: (priceBlock8 !== null && priceBlock8 !== '' && !isNaN(parseFloat(priceBlock8))) 
+        ? parseFloat(priceBlock8) 
+        : (priceBlock8 === null ? null : undefined),
+      priceBlock9: (priceBlock9 !== null && priceBlock9 !== '' && !isNaN(parseFloat(priceBlock9))) 
+        ? parseFloat(priceBlock9) 
+        : (priceBlock9 === null ? null : undefined),
+      priceBlock10: (priceBlock10 !== null && priceBlock10 !== '' && !isNaN(parseFloat(priceBlock10))) 
+        ? parseFloat(priceBlock10) 
+        : (priceBlock10 === null ? null : undefined),
+      priceBlock11: (priceBlock11 !== null && priceBlock11 !== '' && !isNaN(parseFloat(priceBlock11))) 
+        ? parseFloat(priceBlock11) 
+        : (priceBlock11 === null ? null : undefined),
+      priceBlock12: (priceBlock12 !== null && priceBlock12 !== '' && !isNaN(parseFloat(priceBlock12))) 
+        ? parseFloat(priceBlock12) 
+        : (priceBlock12 === null ? null : undefined),
+      priceBlock13: (priceBlock13 !== null && priceBlock13 !== '' && !isNaN(parseFloat(priceBlock13))) 
+        ? parseFloat(priceBlock13) 
+        : (priceBlock13 === null ? null : undefined),
+      priceBlock14: (priceBlock14 !== null && priceBlock14 !== '' && !isNaN(parseFloat(priceBlock14))) 
+        ? parseFloat(priceBlock14) 
+        : (priceBlock14 === null ? null : undefined),
       // New pricing model
       pricingSlabs: pricingSlabs || undefined,
       weekendSurgeMultiplier: weekendSurgeMultiplier || 1.0,
@@ -212,18 +250,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
       price12Hours,
       pricePerHourOver12,
       pricePerWeek,
-      pricePerHour13,
-      pricePerHour14,
-      pricePerHour15,
-      pricePerHour16,
-      pricePerHour17,
-      pricePerHour18,
-      pricePerHour19,
-      pricePerHour20,
-      pricePerHour21,
-      pricePerHour22,
-      pricePerHour23,
-      pricePerHour24
+      priceBlock1,
+      priceBlock2,
+      priceBlock3,
+      priceBlock4,
+      priceBlock5,
+      priceBlock6,
+      priceBlock7,
+      priceBlock8,
+      priceBlock9,
+      priceBlock10,
+      priceBlock11,
+      priceBlock12,
+      priceBlock13,
+      priceBlock14
     } = req.body;
 
     // Build update object with only provided fields
@@ -242,22 +282,92 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (weekendSurgeMultiplier !== undefined) updateData.weekendSurgeMultiplier = weekendSurgeMultiplier;
     if (gstPercentage !== undefined) updateData.gstPercentage = gstPercentage;
     if (available !== undefined) updateData.available = available;
-    // New simple pricing model fields
-    if (price12Hours !== undefined) updateData.price12Hours = price12Hours ? parseFloat(price12Hours) : null;
-    if (pricePerHourOver12 !== undefined) updateData.pricePerHourOver12 = pricePerHourOver12 ? parseFloat(pricePerHourOver12) : null;
-    if (pricePerWeek !== undefined) updateData.pricePerWeek = pricePerWeek ? parseFloat(pricePerWeek) : null;
-    if (pricePerHour13 !== undefined) updateData.pricePerHour13 = pricePerHour13 ? parseFloat(pricePerHour13) : null;
-    if (pricePerHour14 !== undefined) updateData.pricePerHour14 = pricePerHour14 ? parseFloat(pricePerHour14) : null;
-    if (pricePerHour15 !== undefined) updateData.pricePerHour15 = pricePerHour15 ? parseFloat(pricePerHour15) : null;
-    if (pricePerHour16 !== undefined) updateData.pricePerHour16 = pricePerHour16 ? parseFloat(pricePerHour16) : null;
-    if (pricePerHour17 !== undefined) updateData.pricePerHour17 = pricePerHour17 ? parseFloat(pricePerHour17) : null;
-    if (pricePerHour18 !== undefined) updateData.pricePerHour18 = pricePerHour18 ? parseFloat(pricePerHour18) : null;
-    if (pricePerHour19 !== undefined) updateData.pricePerHour19 = pricePerHour19 ? parseFloat(pricePerHour19) : null;
-    if (pricePerHour20 !== undefined) updateData.pricePerHour20 = pricePerHour20 ? parseFloat(pricePerHour20) : null;
-    if (pricePerHour21 !== undefined) updateData.pricePerHour21 = pricePerHour21 ? parseFloat(pricePerHour21) : null;
-    if (pricePerHour22 !== undefined) updateData.pricePerHour22 = pricePerHour22 ? parseFloat(pricePerHour22) : null;
-    if (pricePerHour23 !== undefined) updateData.pricePerHour23 = pricePerHour23 ? parseFloat(pricePerHour23) : null;
-    if (pricePerHour24 !== undefined) updateData.pricePerHour24 = pricePerHour24 ? parseFloat(pricePerHour24) : null;
+    // New simple pricing model fields - handle null, 0, and empty strings correctly
+    if (price12Hours !== undefined) {
+      updateData.price12Hours = (price12Hours !== null && price12Hours !== '' && !isNaN(parseFloat(price12Hours))) 
+        ? parseFloat(price12Hours) 
+        : null;
+    }
+    if (pricePerHourOver12 !== undefined) {
+      updateData.pricePerHourOver12 = (pricePerHourOver12 !== null && pricePerHourOver12 !== '' && !isNaN(parseFloat(pricePerHourOver12))) 
+        ? parseFloat(pricePerHourOver12) 
+        : null;
+    }
+    if (pricePerWeek !== undefined) {
+      updateData.pricePerWeek = (pricePerWeek !== null && pricePerWeek !== '' && !isNaN(parseFloat(pricePerWeek))) 
+        ? parseFloat(pricePerWeek) 
+        : null;
+    }
+    if (priceBlock1 !== undefined) {
+      updateData.priceBlock1 = (priceBlock1 !== null && priceBlock1 !== '' && !isNaN(parseFloat(priceBlock1))) 
+        ? parseFloat(priceBlock1) 
+        : null;
+    }
+    if (priceBlock2 !== undefined) {
+      updateData.priceBlock2 = (priceBlock2 !== null && priceBlock2 !== '' && !isNaN(parseFloat(priceBlock2))) 
+        ? parseFloat(priceBlock2) 
+        : null;
+    }
+    if (priceBlock3 !== undefined) {
+      updateData.priceBlock3 = (priceBlock3 !== null && priceBlock3 !== '' && !isNaN(parseFloat(priceBlock3))) 
+        ? parseFloat(priceBlock3) 
+        : null;
+    }
+    if (priceBlock4 !== undefined) {
+      updateData.priceBlock4 = (priceBlock4 !== null && priceBlock4 !== '' && !isNaN(parseFloat(priceBlock4))) 
+        ? parseFloat(priceBlock4) 
+        : null;
+    }
+    if (priceBlock5 !== undefined) {
+      updateData.priceBlock5 = (priceBlock5 !== null && priceBlock5 !== '' && !isNaN(parseFloat(priceBlock5))) 
+        ? parseFloat(priceBlock5) 
+        : null;
+    }
+    if (priceBlock6 !== undefined) {
+      updateData.priceBlock6 = (priceBlock6 !== null && priceBlock6 !== '' && !isNaN(parseFloat(priceBlock6))) 
+        ? parseFloat(priceBlock6) 
+        : null;
+    }
+    if (priceBlock7 !== undefined) {
+      updateData.priceBlock7 = (priceBlock7 !== null && priceBlock7 !== '' && !isNaN(parseFloat(priceBlock7))) 
+        ? parseFloat(priceBlock7) 
+        : null;
+    }
+    if (priceBlock8 !== undefined) {
+      updateData.priceBlock8 = (priceBlock8 !== null && priceBlock8 !== '' && !isNaN(parseFloat(priceBlock8))) 
+        ? parseFloat(priceBlock8) 
+        : null;
+    }
+    if (priceBlock9 !== undefined) {
+      updateData.priceBlock9 = (priceBlock9 !== null && priceBlock9 !== '' && !isNaN(parseFloat(priceBlock9))) 
+        ? parseFloat(priceBlock9) 
+        : null;
+    }
+    if (priceBlock10 !== undefined) {
+      updateData.priceBlock10 = (priceBlock10 !== null && priceBlock10 !== '' && !isNaN(parseFloat(priceBlock10))) 
+        ? parseFloat(priceBlock10) 
+        : null;
+    }
+    if (priceBlock11 !== undefined) {
+      updateData.priceBlock11 = (priceBlock11 !== null && priceBlock11 !== '' && !isNaN(parseFloat(priceBlock11))) 
+        ? parseFloat(priceBlock11) 
+        : null;
+    }
+    if (priceBlock12 !== undefined) {
+      updateData.priceBlock12 = (priceBlock12 !== null && priceBlock12 !== '' && !isNaN(parseFloat(priceBlock12))) 
+        ? parseFloat(priceBlock12) 
+        : null;
+    }
+    if (priceBlock13 !== undefined) {
+      updateData.priceBlock13 = (priceBlock13 !== null && priceBlock13 !== '' && !isNaN(parseFloat(priceBlock13))) 
+        ? parseFloat(priceBlock13) 
+        : null;
+    }
+    if (priceBlock14 !== undefined) {
+      updateData.priceBlock14 = (priceBlock14 !== null && priceBlock14 !== '' && !isNaN(parseFloat(priceBlock14))) 
+        ? parseFloat(priceBlock14) 
+        : null;
+    }
 
     const bike = await Bike.findByIdAndUpdate(
       req.params.id,

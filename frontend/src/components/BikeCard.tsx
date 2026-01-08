@@ -51,10 +51,10 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
 
     try {
       // Try new simple pricing model first
-      const hasIndividualRates = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].some(
-        hour => bike[`pricePerHour${hour}` as keyof typeof bike] && Number(bike[`pricePerHour${hour}` as keyof typeof bike]) > 0
+      const hasBlocks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].some(
+        block => bike[`priceBlock${block}` as keyof typeof bike] && Number(bike[`priceBlock${block}` as keyof typeof bike]) > 0
       );
-      if (bike.price12Hours || hasIndividualRates || bike.pricePerWeek) {
+      if (bike.price12Hours || hasBlocks || bike.pricePerWeek) {
         return calculateSimplePrice(bike, pickupDateTime, dropoffDateTime);
       }
       // Fallback to legacy pricing slabs

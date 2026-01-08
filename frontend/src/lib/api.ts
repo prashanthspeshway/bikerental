@@ -51,8 +51,15 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
     const res = await fetch(url, { 
       ...init, 
-      headers: { ...headers, ...(init?.headers as any) },
+      headers: { 
+        ...headers, 
+        ...(init?.headers as any),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
       credentials: 'include', // Include cookies for CORS
+      cache: 'no-store', // Prevent caching
     });
     
     if (!res.ok) {
@@ -173,9 +180,15 @@ export const authAPI = {
 };
 
 export const bikesAPI = {
-  getAll: (locationId?: string) => {
-    const qs = locationId ? `?locationId=${encodeURIComponent(locationId)}` : '';
-    return apiRequest<any[]>(`/bikes${qs}`);
+  getAll: (locationId?: string, forceRefresh = false) => {
+    const params = new URLSearchParams();
+    if (locationId) params.append('locationId', locationId);
+    if (forceRefresh) {
+      params.append('_t', Date.now().toString()); // Cache busting
+    } else {
+      params.append('_t', Date.now().toString()); // Always cache bust
+    }
+    return apiRequest<any[]>(`/bikes?${params.toString()}`);
   },
   getById: (id: string) => apiRequest<any>(`/bikes/${id}`),
   getAvailable: (startISO: string, endISO: string, locationId?: string) => {

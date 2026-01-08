@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
 import { Camera, X, Upload, RefreshCw } from 'lucide-react';
 import { calculateRentalPrice } from '@/utils/priceCalculator';
+import { calculateSimplePrice } from '@/utils/simplePriceCalculator';
 
 interface BookingDetails {
   bike: Bike;
@@ -168,7 +169,17 @@ export default function Payment() {
   const endDate = new Date(dropoffTime);
   let priceInfo: any = null;
   try {
-    priceInfo = calculateRentalPrice(bike, startDate, endDate, pricingType);
+    // Check if bike uses new simple pricing model
+    const hasBlocks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].some(
+      block => bike[`priceBlock${block}` as keyof Bike] && Number(bike[`priceBlock${block}` as keyof Bike]) > 0
+    );
+    if (bike.price12Hours || hasBlocks || bike.pricePerWeek) {
+      // Use new simple pricing model
+      priceInfo = calculateSimplePrice(bike, startDate, endDate);
+    } else {
+      // Use legacy pricing model
+      priceInfo = calculateRentalPrice(bike, startDate, endDate, pricingType);
+    }
   } catch (error) {
     console.error('Price calculation error:', error);
   }

@@ -96,18 +96,20 @@ export default function Admin() {
     category: 'midrange', 
     pricePerHour: '', 
     price12Hours: '',
-    pricePerHour13: '',
-    pricePerHour14: '',
-    pricePerHour15: '',
-    pricePerHour16: '',
-    pricePerHour17: '',
-    pricePerHour18: '',
-    pricePerHour19: '',
-    pricePerHour20: '',
-    pricePerHour21: '',
-    pricePerHour22: '',
-    pricePerHour23: '',
-    pricePerHour24: '',
+    priceBlock1: '',
+    priceBlock2: '',
+    priceBlock3: '',
+    priceBlock4: '',
+    priceBlock5: '',
+    priceBlock6: '',
+    priceBlock7: '',
+    priceBlock8: '',
+    priceBlock9: '',
+    priceBlock10: '',
+    priceBlock11: '',
+    priceBlock12: '',
+    priceBlock13: '',
+    priceBlock14: '',
     pricePerWeek: '',
     kmLimit: '', 
     locationId: '', 
@@ -792,18 +794,20 @@ export default function Admin() {
                     category: 'midrange',
                     pricePerHour: '', 
                     price12Hours: '',
-                    pricePerHour13: '',
-                    pricePerHour14: '',
-                    pricePerHour15: '',
-                    pricePerHour16: '',
-                    pricePerHour17: '',
-                    pricePerHour18: '',
-                    pricePerHour19: '',
-                    pricePerHour20: '',
-                    pricePerHour21: '',
-                    pricePerHour22: '',
-                    pricePerHour23: '',
-                    pricePerHour24: '',
+                    priceBlock1: '',
+                    priceBlock2: '',
+                    priceBlock3: '',
+                    priceBlock4: '',
+                    priceBlock5: '',
+                    priceBlock6: '',
+                    priceBlock7: '',
+                    priceBlock8: '',
+                    priceBlock9: '',
+                    priceBlock10: '',
+                    priceBlock11: '',
+                    priceBlock12: '',
+                    priceBlock13: '',
+                    priceBlock14: '',
                     pricePerWeek: '',
                     kmLimit: '', 
                     locationId: currentUser?.role === 'superadmin' ? '' : (selectedLocationId || ''), 
@@ -889,20 +893,22 @@ export default function Admin() {
                                 type: bike.type,
                                 category: bike.category || 'midrange',
                                 pricePerHour: String(bike.pricePerHour || ''),
-                                price12Hours: String(bike.price12Hours || ''),
-                                pricePerHour13: String(bike.pricePerHour13 || ''),
-                                pricePerHour14: String(bike.pricePerHour14 || ''),
-                                pricePerHour15: String(bike.pricePerHour15 || ''),
-                                pricePerHour16: String(bike.pricePerHour16 || ''),
-                                pricePerHour17: String(bike.pricePerHour17 || ''),
-                                pricePerHour18: String(bike.pricePerHour18 || ''),
-                                pricePerHour19: String(bike.pricePerHour19 || ''),
-                                pricePerHour20: String(bike.pricePerHour20 || ''),
-                                pricePerHour21: String(bike.pricePerHour21 || ''),
-                                pricePerHour22: String(bike.pricePerHour22 || ''),
-                                pricePerHour23: String(bike.pricePerHour23 || ''),
-                                pricePerHour24: String(bike.pricePerHour24 || ''),
-                                pricePerWeek: String(bike.pricePerWeek || ''),
+                                price12Hours: bike.price12Hours != null ? String(bike.price12Hours) : '',
+                                priceBlock1: bike.priceBlock1 != null ? String(bike.priceBlock1) : '',
+                                priceBlock2: bike.priceBlock2 != null ? String(bike.priceBlock2) : '',
+                                priceBlock3: bike.priceBlock3 != null ? String(bike.priceBlock3) : '',
+                                priceBlock4: bike.priceBlock4 != null ? String(bike.priceBlock4) : '',
+                                priceBlock5: bike.priceBlock5 != null ? String(bike.priceBlock5) : '',
+                                priceBlock6: bike.priceBlock6 != null ? String(bike.priceBlock6) : '',
+                                priceBlock7: bike.priceBlock7 != null ? String(bike.priceBlock7) : '',
+                                priceBlock8: bike.priceBlock8 != null ? String(bike.priceBlock8) : '',
+                                priceBlock9: bike.priceBlock9 != null ? String(bike.priceBlock9) : '',
+                                priceBlock10: bike.priceBlock10 != null ? String(bike.priceBlock10) : '',
+                                priceBlock11: bike.priceBlock11 != null ? String(bike.priceBlock11) : '',
+                                priceBlock12: bike.priceBlock12 != null ? String(bike.priceBlock12) : '',
+                                priceBlock13: bike.priceBlock13 != null ? String(bike.priceBlock13) : '',
+                                priceBlock14: bike.priceBlock14 != null ? String(bike.priceBlock14) : '',
+                                pricePerWeek: bike.pricePerWeek != null ? String(bike.pricePerWeek) : '',
                                 kmLimit: String(bike.kmLimit),
                                 locationId: currentUser?.role === 'superadmin' ? bike.locationId : (selectedLocationId || bike.locationId),
                                 image: bike.image || '',
@@ -1358,23 +1364,27 @@ export default function Admin() {
                 onChange={(e) => setBikeForm({ ...bikeForm, price12Hours: e.target.value })} 
               />
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Hourly Rates (for hours 13-24)</Label>
-                <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                  {[13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].map((hour) => (
-                    <div key={hour} className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Hour {hour} (₹)</Label>
-                      <Input 
-                        placeholder={`Hour ${hour}`}
-                        type="number"
-                        step="0.01"
-                        value={bikeForm[`pricePerHour${hour}`] || ''} 
-                        onChange={(e) => setBikeForm({ ...bikeForm, [`pricePerHour${hour}`]: e.target.value })} 
-                      />
-                    </div>
-                  ))}
+                <Label className="text-sm font-medium">12-Hour Pricing Blocks (for 7 days)</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((block) => {
+                    const startHour = 12 + (block - 1) * 12 + 1;
+                    const endHour = 12 + block * 12;
+                    return (
+                      <div key={block} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Block {block} (Hours {startHour}-{endHour}) (₹)</Label>
+                        <Input 
+                          placeholder={`Block ${block}`}
+                          type="number"
+                          step="0.01"
+                          value={bikeForm[`priceBlock${block}`] || ''} 
+                          onChange={(e) => setBikeForm({ ...bikeForm, [`priceBlock${block}`]: e.target.value })} 
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Set individual rates for each hour from 13-24. Price for 12 hours is fixed above.
+                  Set pricing for each 12-hour block. Block 1 covers hours 13-24, Block 2 covers hours 25-36, and so on up to Block 14 (hours 157-168 = 7 days).
                 </p>
               </div>
               <Input 
@@ -1450,20 +1460,22 @@ export default function Admin() {
                       payload.category = 'midrange'; // Default if not set
                     }
                     
-                    // Add pricing fields
-                    if (bikeForm.price12Hours) {
-                      payload.price12Hours = parseFloat(bikeForm.price12Hours);
+                    // Add pricing fields - always include them so backend can update properly
+                    const parsePrice = (val: string | undefined): number | null => {
+                      if (!val || typeof val !== 'string') return null;
+                      const trimmed = val.trim();
+                      if (trimmed === '') return null;
+                      const parsed = parseFloat(trimmed);
+                      return isNaN(parsed) ? null : parsed;
+                    };
+                    
+                    payload.price12Hours = parsePrice(bikeForm.price12Hours);
+                    // Add 12-hour pricing blocks (14 blocks for 7 days) - always include them
+                    for (let block = 1; block <= 14; block++) {
+                      const fieldName = `priceBlock${block}`;
+                      payload[fieldName] = parsePrice(bikeForm[fieldName]);
                     }
-                    // Add individual hourly rates for hours 13-24
-                    for (let hour = 13; hour <= 24; hour++) {
-                      const fieldName = `pricePerHour${hour}`;
-                      if (bikeForm[fieldName]) {
-                        payload[fieldName] = parseFloat(bikeForm[fieldName]);
-                      }
-                    }
-                    if (bikeForm.pricePerWeek) {
-                      payload.pricePerWeek = parseFloat(bikeForm.pricePerWeek);
-                    }
+                    payload.pricePerWeek = parsePrice(bikeForm.pricePerWeek);
                     // Keep pricePerHour for backward compatibility
                     if (bikeForm.pricePerHour) {
                       payload.pricePerHour = parseFloat(bikeForm.pricePerHour);
@@ -1477,7 +1489,8 @@ export default function Admin() {
                     }
                     setBikeDialogOpen(false);
                     setEditingBike(null);
-                    loadData();
+                    // Force reload data to show updated prices
+                    await loadData();
                   } catch (e: any) {
                     toast({ title: 'Error', description: e.message || 'Failed to save vehicle', variant: 'destructive' });
                   }

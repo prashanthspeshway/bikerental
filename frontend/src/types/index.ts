@@ -19,19 +19,22 @@ export interface Bike {
   pricePerHour?: number;
   // New simple pricing fields
   price12Hours?: number;
-  // Individual hourly rates for hours 13-24
-  pricePerHour13?: number;
-  pricePerHour14?: number;
-  pricePerHour15?: number;
-  pricePerHour16?: number;
-  pricePerHour17?: number;
-  pricePerHour18?: number;
-  pricePerHour19?: number;
-  pricePerHour20?: number;
-  pricePerHour21?: number;
-  pricePerHour22?: number;
-  pricePerHour23?: number;
-  pricePerHour24?: number;
+  // 12-hour pricing blocks for 7 days (14 blocks × 12 hours = 168 hours = 7 days)
+  // Block 1: Hours 13-24, Block 2: Hours 25-36, ..., Block 14: Hours 157-168
+  priceBlock1?: number;
+  priceBlock2?: number;
+  priceBlock3?: number;
+  priceBlock4?: number;
+  priceBlock5?: number;
+  priceBlock6?: number;
+  priceBlock7?: number;
+  priceBlock8?: number;
+  priceBlock9?: number;
+  priceBlock10?: number;
+  priceBlock11?: number;
+  priceBlock12?: number;
+  priceBlock13?: number;
+  priceBlock14?: number;
   pricePerWeek?: number;
   kmLimit?: number;
   // New pricing model
