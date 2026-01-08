@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Bike,
@@ -88,7 +89,30 @@ export default function Admin() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<any | null>(null);
-  const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
+  const [bikeForm, setBikeForm] = useState<any>({ 
+    name: '', 
+    brand: '', 
+    type: 'fuel', 
+    category: 'midrange', 
+    pricePerHour: '', 
+    price12Hours: '',
+    pricePerHour13: '',
+    pricePerHour14: '',
+    pricePerHour15: '',
+    pricePerHour16: '',
+    pricePerHour17: '',
+    pricePerHour18: '',
+    pricePerHour19: '',
+    pricePerHour20: '',
+    pricePerHour21: '',
+    pricePerHour22: '',
+    pricePerHour23: '',
+    pricePerHour24: '',
+    pricePerWeek: '',
+    kmLimit: '', 
+    locationId: '', 
+    image: '' 
+  });
   const [brandSearch, setBrandSearch] = useState('');
   const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
   const [allVehiclesSearchQuery, setAllVehiclesSearchQuery] = useState('');
@@ -765,7 +789,22 @@ export default function Admin() {
                     name: '', 
                     brand: '', 
                     type: 'fuel', 
+                    category: 'midrange',
                     pricePerHour: '', 
+                    price12Hours: '',
+                    pricePerHour13: '',
+                    pricePerHour14: '',
+                    pricePerHour15: '',
+                    pricePerHour16: '',
+                    pricePerHour17: '',
+                    pricePerHour18: '',
+                    pricePerHour19: '',
+                    pricePerHour20: '',
+                    pricePerHour21: '',
+                    pricePerHour22: '',
+                    pricePerHour23: '',
+                    pricePerHour24: '',
+                    pricePerWeek: '',
                     kmLimit: '', 
                     locationId: currentUser?.role === 'superadmin' ? '' : (selectedLocationId || ''), 
                     image: '' 
@@ -848,7 +887,22 @@ export default function Admin() {
                                 name: bike.name,
                                 brand: bike.brand || '',
                                 type: bike.type,
-                                pricePerHour: String(bike.pricePerHour),
+                                category: bike.category || 'midrange',
+                                pricePerHour: String(bike.pricePerHour || ''),
+                                price12Hours: String(bike.price12Hours || ''),
+                                pricePerHour13: String(bike.pricePerHour13 || ''),
+                                pricePerHour14: String(bike.pricePerHour14 || ''),
+                                pricePerHour15: String(bike.pricePerHour15 || ''),
+                                pricePerHour16: String(bike.pricePerHour16 || ''),
+                                pricePerHour17: String(bike.pricePerHour17 || ''),
+                                pricePerHour18: String(bike.pricePerHour18 || ''),
+                                pricePerHour19: String(bike.pricePerHour19 || ''),
+                                pricePerHour20: String(bike.pricePerHour20 || ''),
+                                pricePerHour21: String(bike.pricePerHour21 || ''),
+                                pricePerHour22: String(bike.pricePerHour22 || ''),
+                                pricePerHour23: String(bike.pricePerHour23 || ''),
+                                pricePerHour24: String(bike.pricePerHour24 || ''),
+                                pricePerWeek: String(bike.pricePerWeek || ''),
                                 kmLimit: String(bike.kmLimit),
                                 locationId: currentUser?.role === 'superadmin' ? bike.locationId : (selectedLocationId || bike.locationId),
                                 image: bike.image || '',
@@ -1266,7 +1320,7 @@ export default function Admin() {
 
       {/* Vehicle Create/Edit Dialog */}
       <Dialog open={bikeDialogOpen} onOpenChange={setBikeDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingBike ? 'Edit Vehicle' : 'Add Vehicle'}</DialogTitle>
             <DialogDescription>Enter vehicle details</DialogDescription>
@@ -1282,8 +1336,63 @@ export default function Admin() {
                 <SelectItem value="scooter">Scooter</SelectItem>
               </SelectContent>
             </Select>
-            <Input placeholder="Price Per Hour" value={bikeForm.pricePerHour} onChange={(e) => setBikeForm({ ...bikeForm, pricePerHour: e.target.value })} />
-            <Input placeholder="KM Limit" value={bikeForm.kmLimit} onChange={(e) => setBikeForm({ ...bikeForm, kmLimit: e.target.value })} />
+            <Select 
+              value={bikeForm.category || 'midrange'} 
+              onValueChange={(v) => {
+                setBikeForm({ ...bikeForm, category: v as 'budget' | 'midrange' | 'topend' });
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="budget">Budget</SelectItem>
+                <SelectItem value="midrange">Mid Range</SelectItem>
+                <SelectItem value="topend">Top End</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Pricing</Label>
+              <Input 
+                placeholder="Price for 12 Hours (₹)" 
+                type="number"
+                value={bikeForm.price12Hours} 
+                onChange={(e) => setBikeForm({ ...bikeForm, price12Hours: e.target.value })} 
+              />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Hourly Rates (for hours 13-24)</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                  {[13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].map((hour) => (
+                    <div key={hour} className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Hour {hour} (₹)</Label>
+                      <Input 
+                        placeholder={`Hour ${hour}`}
+                        type="number"
+                        step="0.01"
+                        value={bikeForm[`pricePerHour${hour}`] || ''} 
+                        onChange={(e) => setBikeForm({ ...bikeForm, [`pricePerHour${hour}`]: e.target.value })} 
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set individual rates for each hour from 13-24. Price for 12 hours is fixed above.
+                </p>
+              </div>
+              <Input 
+                placeholder="Price Per Week (₹)" 
+                type="number"
+                value={bikeForm.pricePerWeek} 
+                onChange={(e) => setBikeForm({ ...bikeForm, pricePerWeek: e.target.value })} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">KM Limit</Label>
+              <Input 
+                type="number"
+                placeholder="KM Limit" 
+                value={bikeForm.kmLimit} 
+                onChange={(e) => setBikeForm({ ...bikeForm, kmLimit: e.target.value })} 
+              />
+            </div>
             {currentUser?.role === 'superadmin' && (
               <Select value={bikeForm.locationId} onValueChange={(v) => setBikeForm({ ...bikeForm, locationId: v })}>
                 <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
@@ -1325,15 +1434,40 @@ export default function Admin() {
               <Button
                 onClick={async () => {
                   try {
-                    const payload = {
+                    const payload: any = {
                       name: bikeForm.name,
                       brand: (bikeForm.brand || '').trim(),
                       type: bikeForm.type,
-                      pricePerHour: parseFloat(bikeForm.pricePerHour),
                       kmLimit: parseInt(bikeForm.kmLimit),
                       locationId: currentUser?.role === 'superadmin' ? bikeForm.locationId : selectedLocationId,
                       image: bikeForm.image,
                     };
+                    
+                    // Always include category if it exists in the form
+                    if (bikeForm.category) {
+                      payload.category = bikeForm.category;
+                    } else {
+                      payload.category = 'midrange'; // Default if not set
+                    }
+                    
+                    // Add pricing fields
+                    if (bikeForm.price12Hours) {
+                      payload.price12Hours = parseFloat(bikeForm.price12Hours);
+                    }
+                    // Add individual hourly rates for hours 13-24
+                    for (let hour = 13; hour <= 24; hour++) {
+                      const fieldName = `pricePerHour${hour}`;
+                      if (bikeForm[fieldName]) {
+                        payload[fieldName] = parseFloat(bikeForm[fieldName]);
+                      }
+                    }
+                    if (bikeForm.pricePerWeek) {
+                      payload.pricePerWeek = parseFloat(bikeForm.pricePerWeek);
+                    }
+                    // Keep pricePerHour for backward compatibility
+                    if (bikeForm.pricePerHour) {
+                      payload.pricePerHour = parseFloat(bikeForm.pricePerHour);
+                    }
                     if (editingBike) {
                       await bikesAPI.update(editingBike.id, payload);
                       toast({ title: 'Vehicle updated' });

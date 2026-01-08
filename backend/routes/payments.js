@@ -71,7 +71,7 @@ router.post('/verify', authenticateToken, async (req, res) => {
     if (hmac !== razorpay_signature) {
       return res.status(400).json({ success: false, message: 'Signature mismatch' });
     }
-    const { bikeId, pickupTime, dropoffTime, totalAmount, selectedLocationId, additionalImages } = bookingDetails || {};
+    const { bikeId, pickupTime, dropoffTime, totalAmount, pricingType = 'hourly', selectedLocationId, additionalImages } = bookingDetails || {};
     if (!Array.isArray(additionalImages) || additionalImages.filter(Boolean).length < 5) {
       return res.status(400).json({ success: false, message: 'Please upload all 5 bike images before payment.' });
     }

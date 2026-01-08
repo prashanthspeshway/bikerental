@@ -2,6 +2,7 @@ import express from 'express';
 import Location from '../models/Location.js';
 import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
+import { logErrorIfNotConnection } from '../utils/errorHandler.js';
 
 const router = express.Router();
 
@@ -18,8 +19,8 @@ router.get('/', async (req, res) => {
     }));
     res.json(transformedLocations);
   } catch (error) {
-    console.error('Get locations error:', error);
-    res.status(500).json({ message: 'Error fetching locations' });
+    logErrorIfNotConnection('Get locations error', error);
+    res.status(500).json({ message: 'Error fetching locations. Please try again later.' });
   }
 });
 
@@ -38,8 +39,8 @@ router.get('/:id', async (req, res) => {
       country: location.country,
     });
   } catch (error) {
-    console.error('Get location error:', error);
-    res.status(500).json({ message: 'Error fetching location' });
+    logErrorIfNotConnection('Get location error', error);
+    res.status(500).json({ message: 'Error fetching location. Please try again later.' });
   }
 });
 

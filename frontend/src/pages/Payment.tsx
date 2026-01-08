@@ -9,6 +9,7 @@ import { getCurrentUser, paymentsAPI, documentsAPI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from '@/types';
 import { Camera, X, Upload, RefreshCw } from 'lucide-react';
+import { calculateRentalPrice } from '@/utils/priceCalculator';
 
 interface BookingDetails {
   bike: Bike;
@@ -16,6 +17,7 @@ interface BookingDetails {
   dropoffTime: string;
   durationHours: number;
   totalAmount: number;
+  pricingType?: 'hourly' | 'daily' | 'weekly';
 }
 
 const MAX_IMAGES = 5;
@@ -159,7 +161,17 @@ export default function Payment() {
 
   if (!bookingDetails) return null;
 
-  const { bike, pickupTime, dropoffTime, durationHours, totalAmount } = bookingDetails;
+  const { bike, pickupTime, dropoffTime, durationHours, totalAmount, pricingType = 'hourly' } = bookingDetails;
+  
+  // Calculate price breakdown
+  const startDate = new Date(pickupTime);
+  const endDate = new Date(dropoffTime);
+  let priceInfo: any = null;
+  try {
+    priceInfo = calculateRentalPrice(bike, startDate, endDate, pricingType);
+  } catch (error) {
+    console.error('Price calculation error:', error);
+  }
 
   const onPickFile = (index: number) => {
     openCamera(index);
@@ -223,8 +235,9 @@ export default function Payment() {
         return;
       }
       setLoading(true);
+      const finalAmount = priceInfo ? Math.round(priceInfo.total) : totalAmount;
       const { keyId } = await paymentsAPI.getKey();
-      const order = await paymentsAPI.createOrder(totalAmount);
+      const order = await paymentsAPI.createOrder(finalAmount);
       const options = {
         key: keyId,
         amount: order.amount,
@@ -235,6 +248,7 @@ export default function Payment() {
         handler: async function (response: any) {
           try {
             const selectedLocationId = localStorage.getItem('selectedLocation') || undefined;
+            const finalAmount = priceInfo ? Math.round(priceInfo.total) : totalAmount;
             const result = await paymentsAPI.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -243,7 +257,8 @@ export default function Payment() {
                 bikeId: bike.id,
                 pickupTime,
                 dropoffTime,
-                totalAmount,
+                totalAmount: finalAmount,
+                pricingType,
                 selectedLocationId,
                 additionalImages: extraImages.filter((img): img is string => img !== null)
               }
@@ -363,10 +378,41 @@ export default function Payment() {
                 <span className="text-muted-foreground">Duration</span>
                 <span className="font-medium">{Math.round(durationHours)} hours</span>
               </div>
+              {priceInfo && (
+                <>
+                  <hr />
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Base Price</span>
+                      <span className="font-medium">₹{priceInfo.basePrice.toFixed(2)}</span>
+                    </div>
+                    {priceInfo.hasWeekend && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Weekend Surge ({((priceInfo.surgeMultiplier - 1) * 100).toFixed(0)}%)</span>
+                        <span className="font-medium text-accent">+₹{(priceInfo.priceAfterSurge - priceInfo.basePrice).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {priceInfo.excessKm > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Excess KM ({priceInfo.excessKm} km)</span>
+                        <span className="font-medium">+₹{priceInfo.excessKmCharge.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-medium">₹{priceInfo.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">GST ({priceInfo.gstPercentage}%)</span>
+                      <span className="font-medium">+₹{priceInfo.gstAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
               <hr />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total Amount</span>
-                <span>₹{totalAmount.toFixed(2)}</span>
+                <span>₹{priceInfo ? priceInfo.total.toFixed(2) : totalAmount.toFixed(2)}</span>
               </div>
             </CardContent>
             <CardFooter>
@@ -376,7 +422,7 @@ export default function Payment() {
                 onClick={handlePayment}
                 disabled={loading || filledSlots < MAX_IMAGES}
               >
-                {loading ? 'Processing...' : `Pay ₹${totalAmount.toFixed(2)}`}
+                {loading ? 'Processing...' : `Pay ₹${(priceInfo ? priceInfo.total : totalAmount).toFixed(2)}`}
               </Button>
             </CardFooter>
           </Card>

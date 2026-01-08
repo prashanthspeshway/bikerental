@@ -4,6 +4,7 @@ import { authenticateToken } from './auth.js';
 import User from '../models/User.js';
 import { transformBike } from '../utils/transform.js';
 import Rental from '../models/Rental.js';
+import { logErrorIfNotConnection } from '../utils/errorHandler.js';
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ router.get('/', async (req, res) => {
     const transformedBikes = bikes.map(transformBike);
     res.json(transformedBikes);
   } catch (error) {
-    console.error('Get bikes error:', error);
-    res.status(500).json({ message: 'Error fetching bikes' });
+    logErrorIfNotConnection('Get bikes error', error);
+    res.status(500).json({ message: 'Error fetching bikes. Please try again later.' });
   }
 });
 
@@ -63,8 +64,8 @@ router.get('/available', async (req, res) => {
     const available = bikes.filter(b => !occupiedBikeIds.has(b._id.toString()));
     res.json(available.map(transformBike));
   } catch (error) {
-    console.error('Get available bikes error:', error);
-    res.status(500).json({ message: 'Error fetching available bikes' });
+    logErrorIfNotConnection('Get available bikes error', error);
+    res.status(500).json({ message: 'Error fetching available bikes. Please try again later.' });
   }
 });
 
@@ -78,8 +79,8 @@ router.get('/:id', async (req, res) => {
     // Transform _id to id for frontend compatibility
     res.json(transformBike(bike));
   } catch (error) {
-    console.error('Get bike error:', error);
-    res.status(500).json({ message: 'Error fetching bike' });
+    logErrorIfNotConnection('Get bike error', error);
+    res.status(500).json({ message: 'Error fetching bike. Please try again later.' });
   }
 });
 
@@ -91,19 +92,84 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const { name, type, brand, image, pricePerHour, kmLimit, description, features, locationId } = req.body;
+    const { 
+      name, 
+      type, 
+      brand, 
+      category,
+      image, 
+      pricePerHour, 
+      kmLimit, 
+      description, 
+      features, 
+      locationId,
+      pricingSlabs,
+      weekendSurgeMultiplier,
+      gstPercentage,
+      price12Hours,
+      pricePerHourOver12,
+      pricePerWeek,
+      pricePerHour13,
+      pricePerHour14,
+      pricePerHour15,
+      pricePerHour16,
+      pricePerHour17,
+      pricePerHour18,
+      pricePerHour19,
+      pricePerHour20,
+      pricePerHour21,
+      pricePerHour22,
+      pricePerHour23,
+      pricePerHour24
+    } = req.body;
 
-    if (!name || !type || !pricePerHour || !kmLimit || !locationId) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    if (!name || !type || !locationId) {
+      return res.status(400).json({ message: 'Required fields missing: name, type, locationId' });
+    }
+
+    // Validate that either pricingSlabs or legacy pricePerHour/kmLimit is provided
+    const hasPricingSlabs = pricingSlabs && (
+      pricingSlabs.hourly || 
+      pricingSlabs.daily || 
+      pricingSlabs.weekly
+    );
+    const hasLegacyPricing = pricePerHour && kmLimit;
+
+    if (!hasPricingSlabs && !hasLegacyPricing) {
+      return res.status(400).json({ 
+        message: 'Either pricingSlabs or pricePerHour/kmLimit must be provided' 
+      });
     }
 
     const newBike = new Bike({
       name,
       type,
       brand: brand || '',
+      category: category || 'midrange',
       image: image || '/bikes/default.jpg',
-      pricePerHour: parseFloat(pricePerHour),
-      kmLimit: parseInt(kmLimit),
+      // Legacy fields (optional if pricingSlabs provided)
+      pricePerHour: pricePerHour ? parseFloat(pricePerHour) : undefined,
+      kmLimit: kmLimit ? parseInt(kmLimit) : undefined,
+      // New simple pricing model
+      price12Hours: price12Hours ? parseFloat(price12Hours) : undefined,
+      pricePerHourOver12: pricePerHourOver12 ? parseFloat(pricePerHourOver12) : undefined,
+      pricePerWeek: pricePerWeek ? parseFloat(pricePerWeek) : undefined,
+      pricePerHour13: pricePerHour13 ? parseFloat(pricePerHour13) : undefined,
+      pricePerHour14: pricePerHour14 ? parseFloat(pricePerHour14) : undefined,
+      pricePerHour15: pricePerHour15 ? parseFloat(pricePerHour15) : undefined,
+      pricePerHour16: pricePerHour16 ? parseFloat(pricePerHour16) : undefined,
+      pricePerHour17: pricePerHour17 ? parseFloat(pricePerHour17) : undefined,
+      pricePerHour18: pricePerHour18 ? parseFloat(pricePerHour18) : undefined,
+      pricePerHour19: pricePerHour19 ? parseFloat(pricePerHour19) : undefined,
+      pricePerHour20: pricePerHour20 ? parseFloat(pricePerHour20) : undefined,
+      pricePerHour21: pricePerHour21 ? parseFloat(pricePerHour21) : undefined,
+      pricePerHour22: pricePerHour22 ? parseFloat(pricePerHour22) : undefined,
+      pricePerHour23: pricePerHour23 ? parseFloat(pricePerHour23) : undefined,
+      pricePerHour24: pricePerHour24 ? parseFloat(pricePerHour24) : undefined,
+      // New pricing model
+      pricingSlabs: pricingSlabs || undefined,
+      weekendSurgeMultiplier: weekendSurgeMultiplier || 1.0,
+      gstPercentage: gstPercentage || 18.0,
       available: true,
       description: description || '',
       features: features || [],
@@ -127,9 +193,75 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
+    // Extract fields from request body
+    const {
+      name,
+      type,
+      brand,
+      category,
+      image,
+      pricePerHour,
+      kmLimit,
+      description,
+      features,
+      locationId,
+      pricingSlabs,
+      weekendSurgeMultiplier,
+      gstPercentage,
+      available,
+      price12Hours,
+      pricePerHourOver12,
+      pricePerWeek,
+      pricePerHour13,
+      pricePerHour14,
+      pricePerHour15,
+      pricePerHour16,
+      pricePerHour17,
+      pricePerHour18,
+      pricePerHour19,
+      pricePerHour20,
+      pricePerHour21,
+      pricePerHour22,
+      pricePerHour23,
+      pricePerHour24
+    } = req.body;
+
+    // Build update object with only provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type;
+    if (brand !== undefined) updateData.brand = brand;
+    if (category !== undefined) updateData.category = category;
+    if (image !== undefined) updateData.image = image;
+    if (pricePerHour !== undefined) updateData.pricePerHour = parseFloat(pricePerHour);
+    if (kmLimit !== undefined) updateData.kmLimit = parseInt(kmLimit);
+    if (description !== undefined) updateData.description = description;
+    if (features !== undefined) updateData.features = features;
+    if (locationId !== undefined) updateData.locationId = locationId;
+    if (pricingSlabs !== undefined) updateData.pricingSlabs = pricingSlabs;
+    if (weekendSurgeMultiplier !== undefined) updateData.weekendSurgeMultiplier = weekendSurgeMultiplier;
+    if (gstPercentage !== undefined) updateData.gstPercentage = gstPercentage;
+    if (available !== undefined) updateData.available = available;
+    // New simple pricing model fields
+    if (price12Hours !== undefined) updateData.price12Hours = price12Hours ? parseFloat(price12Hours) : null;
+    if (pricePerHourOver12 !== undefined) updateData.pricePerHourOver12 = pricePerHourOver12 ? parseFloat(pricePerHourOver12) : null;
+    if (pricePerWeek !== undefined) updateData.pricePerWeek = pricePerWeek ? parseFloat(pricePerWeek) : null;
+    if (pricePerHour13 !== undefined) updateData.pricePerHour13 = pricePerHour13 ? parseFloat(pricePerHour13) : null;
+    if (pricePerHour14 !== undefined) updateData.pricePerHour14 = pricePerHour14 ? parseFloat(pricePerHour14) : null;
+    if (pricePerHour15 !== undefined) updateData.pricePerHour15 = pricePerHour15 ? parseFloat(pricePerHour15) : null;
+    if (pricePerHour16 !== undefined) updateData.pricePerHour16 = pricePerHour16 ? parseFloat(pricePerHour16) : null;
+    if (pricePerHour17 !== undefined) updateData.pricePerHour17 = pricePerHour17 ? parseFloat(pricePerHour17) : null;
+    if (pricePerHour18 !== undefined) updateData.pricePerHour18 = pricePerHour18 ? parseFloat(pricePerHour18) : null;
+    if (pricePerHour19 !== undefined) updateData.pricePerHour19 = pricePerHour19 ? parseFloat(pricePerHour19) : null;
+    if (pricePerHour20 !== undefined) updateData.pricePerHour20 = pricePerHour20 ? parseFloat(pricePerHour20) : null;
+    if (pricePerHour21 !== undefined) updateData.pricePerHour21 = pricePerHour21 ? parseFloat(pricePerHour21) : null;
+    if (pricePerHour22 !== undefined) updateData.pricePerHour22 = pricePerHour22 ? parseFloat(pricePerHour22) : null;
+    if (pricePerHour23 !== undefined) updateData.pricePerHour23 = pricePerHour23 ? parseFloat(pricePerHour23) : null;
+    if (pricePerHour24 !== undefined) updateData.pricePerHour24 = pricePerHour24 ? parseFloat(pricePerHour24) : null;
+
     const bike = await Bike.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
 
