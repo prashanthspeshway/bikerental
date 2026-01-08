@@ -1601,6 +1601,54 @@ export default function Admin() {
                 )}
               </div>
 
+              {/* Ride History */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold">Ride History</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Bike</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Start</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">End</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Status</th>
+                        <th className="text-right px-4 py-3 font-medium text-sm">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {rentalsForLocation.filter(r => r.userId === selectedUser.id).length > 0 ? (
+                        rentalsForLocation
+                          .filter(r => r.userId === selectedUser.id)
+                          .map((rental) => {
+                            const bike = bikes.find(b => b.id === rental.bikeId);
+                            return (
+                              <tr key={rental.id}>
+                                <td className="px-4 py-3 text-sm">{bike?.name || rental.bikeId}</td>
+                                <td className="px-4 py-3 text-sm">{new Date(rental.startTime).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm">{rental.endTime ? new Date(rental.endTime).toLocaleString() : '-'}</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <Badge variant="outline" className={statusStyles[rental.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                                    {rental.status}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-right">
+                                  {rental.totalCost ? `₹${rental.totalCost}` : '-'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                            No ride history found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* Actions */}
               {!selectedUser.isVerified && (
                 <div className="flex justify-end gap-2 pt-4 border-t">
@@ -1750,6 +1798,54 @@ export default function Admin() {
                 ) : (
                   <p className="text-muted-foreground text-center py-8 col-span-2">No documents uploaded</p>
                 )}
+              </div>
+
+              {/* Ride History */}
+              <div className="mt-6">
+                <h3 className="font-semibold text-lg mb-4">Ride History</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Bike</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Start</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">End</th>
+                        <th className="text-left px-4 py-3 font-medium text-sm">Status</th>
+                        <th className="text-right px-4 py-3 font-medium text-sm">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {rentalsForLocation.filter(r => r.userId === selectedDocumentUser.id).length > 0 ? (
+                        rentalsForLocation
+                          .filter(r => r.userId === selectedDocumentUser.id)
+                          .map((rental) => {
+                            const bike = bikes.find(b => b.id === rental.bikeId);
+                            return (
+                              <tr key={rental.id}>
+                                <td className="px-4 py-3 text-sm">{bike?.name || rental.bikeId}</td>
+                                <td className="px-4 py-3 text-sm">{new Date(rental.startTime).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm">{rental.endTime ? new Date(rental.endTime).toLocaleString() : '-'}</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <Badge variant="outline" className={statusStyles[rental.status as keyof typeof statusStyles]?.color || 'bg-muted'}>
+                                    {rental.status}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-right">
+                                  {rental.totalCost ? `₹${rental.totalCost}` : '-'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                            No ride history found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Actions */}
