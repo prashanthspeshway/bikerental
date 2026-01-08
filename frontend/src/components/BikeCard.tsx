@@ -1,11 +1,15 @@
+import { useState, useMemo } from 'react';
 import { Bike } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Gauge, Clock, Zap, Bike as BikeIcon } from 'lucide-react';
+import { getAvailablePricingSlabs, calculateRentalPrice } from '@/utils/priceCalculator';
+import { calculateSimplePrice } from '@/utils/simplePriceCalculator';
 
 interface BikeCardProps {
   bike: Bike;
-  onRent?: (bike: Bike) => void;
+  onRent?: (bike: Bike, pricingType?: 'hourly' | 'daily' | 'weekly') => void;
   variant?: 'grid' | 'list';
   pickupDateTime?: Date;
   dropoffDateTime?: Date;
@@ -34,6 +38,40 @@ const formatDate = (date: Date) => {
 
 export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropoffDateTime, durationHours }: BikeCardProps) {
   const TypeIcon = typeIcons[bike.type];
+  const availableSlabs = getAvailablePricingSlabs(bike);
+  const [selectedPricingType, setSelectedPricingType] = useState<'hourly' | 'daily' | 'weekly'>(
+    availableSlabs[0] || 'hourly'
+  );
+
+  // Calculate price based on new simple pricing model or legacy
+  const priceInfo = useMemo(() => {
+    if (!pickupDateTime || !dropoffDateTime) {
+      return null;
+    }
+
+    try {
+      // Try new simple pricing model first
+      const hasIndividualRates = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].some(
+        hour => bike[`pricePerHour${hour}` as keyof typeof bike] && Number(bike[`pricePerHour${hour}` as keyof typeof bike]) > 0
+      );
+      if (bike.price12Hours || hasIndividualRates || bike.pricePerWeek) {
+        return calculateSimplePrice(bike, pickupDateTime, dropoffDateTime);
+      }
+      // Fallback to legacy pricing slabs
+      return calculateRentalPrice(bike, pickupDateTime, dropoffDateTime, selectedPricingType);
+    } catch (error) {
+      console.error('Price calculation error:', error);
+      return null;
+    }
+  }, [bike, pickupDateTime, dropoffDateTime, selectedPricingType]);
+
+  // Get pricing slab info for display
+  const currentSlab = bike.pricingSlabs?.[selectedPricingType];
+  // For new pricing model, show price12Hours/12 as hourly rate, or use legacy pricing
+  const displayPrice = bike.price12Hours 
+    ? Math.round(bike.price12Hours / 12) 
+    : (currentSlab?.price || bike.pricePerHour || 0);
+  const displayKmLimit = currentSlab?.included_km || bike.kmLimit || 0;
 
   if (variant === 'list') {
     return (
@@ -63,16 +101,30 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
         </div>
         <div className="p-4 space-y-3">
           <h3 className="font-display font-bold text-base">{bike.name}</h3>
+          
+          {/* Pricing Tabs */}
+          {availableSlabs.length > 1 && (
+            <Tabs value={selectedPricingType} onValueChange={(v) => setSelectedPricingType(v as typeof selectedPricingType)}>
+              <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${availableSlabs.length}, 1fr)` }}>
+                {availableSlabs.map((slab) => (
+                  <TabsTrigger key={slab} value={slab} className="text-xs capitalize">
+                    {slab}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5 text-xs">
               <Clock className="h-3 w-3 text-primary" />
-              <span className="font-semibold">₹{bike.pricePerHour}</span>
-              <span className="text-muted-foreground">/hr</span>
+              <span className="font-semibold">₹{displayPrice}</span>
+              <span className="text-muted-foreground">/{selectedPricingType === 'hourly' ? 'hr' : selectedPricingType === 'daily' ? 'day' : 'week'}</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <Gauge className="h-3 w-3 text-accent" />
-              <span className="font-semibold">{bike.kmLimit}</span>
-              <span className="text-muted-foreground">km limit</span>
+              <span className="font-semibold">{displayKmLimit}</span>
+              <span className="text-muted-foreground">km</span>
             </div>
           </div>
           {bike.location?.name && (
@@ -92,11 +144,19 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
               </div>
             </div>
           )}
+          {priceInfo && (
+            <div className="text-sm font-semibold">
+              Total: ₹{Math.round(priceInfo.total)}
+              {priceInfo.hasWeekend && (
+                <span className="text-xs text-accent ml-2">(Weekend surge)</span>
+              )}
+            </div>
+          )}
           <Button
             className="w-full"
             variant={bike.available ? 'default' : 'secondary'}
             disabled={!bike.available}
-            onClick={() => onRent?.(bike)}
+            onClick={() => onRent?.(bike, selectedPricingType)}
           >
             {bike.available ? 'Book' : 'Not Available'}
           </Button>
@@ -134,18 +194,43 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
         <h3 className="font-display font-bold text-base mb-2 group-hover:text-primary transition-colors">
           {bike.name}
         </h3>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center gap-1.5 text-xs">
-            <Clock className="h-3 w-3 text-primary" />
-            <span className="font-semibold">₹{bike.pricePerHour}</span>
-            <span className="text-muted-foreground">/hr</span>
+        
+        {/* Pricing Tabs */}
+        {availableSlabs.length > 1 && (
+          <Tabs value={selectedPricingType} onValueChange={(v) => setSelectedPricingType(v as typeof selectedPricingType)} className="mb-3">
+            <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${availableSlabs.length}, 1fr)` }}>
+              {availableSlabs.map((slab) => (
+                <TabsTrigger key={slab} value={slab} className="text-xs capitalize">
+                  {slab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+
+        {/* Pricing Information */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3 w-3 text-primary" />
+              <span className="font-semibold">₹{displayPrice}</span>
+              <span className="text-muted-foreground">/{selectedPricingType === 'hourly' ? 'hr' : selectedPricingType === 'daily' ? 'day' : 'week'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Gauge className="h-3 w-3 text-accent" />
+              <span className="font-semibold">{displayKmLimit}</span>
+              <span className="text-muted-foreground">km</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <Gauge className="h-3 w-3 text-accent" />
-            <span className="font-semibold">{bike.kmLimit}</span>
-            <span className="text-muted-foreground">km limit</span>
-          </div>
+          {currentSlab?.minimum_booking_rule !== 'none' && currentSlab?.minimum_value && (
+            <div className="text-xs text-muted-foreground">
+              Min: {currentSlab.minimum_booking_rule === 'min_duration' 
+                ? `${currentSlab.minimum_value} hrs` 
+                : `₹${currentSlab.minimum_value}`}
+            </div>
+          )}
         </div>
+
         {(pickupDateTime && dropoffDateTime) && (
           <div className="flex items-center justify-between mb-4 bg-muted/30 p-3 rounded-lg border border-border/50">
             <div className="text-left">
@@ -161,11 +246,30 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
             </div>
           </div>
         )}
+        
         <div className="flex items-center justify-between gap-3 mt-auto">
-          {(durationHours && durationHours > 0) ? (
+          {priceInfo ? (
             <div className="flex flex-col">
               <div className="font-bold text-xl text-foreground">
-                ₹{Math.round(bike.pricePerHour * durationHours)}
+                ₹{Math.round(priceInfo.total)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {priceInfo.breakdown || (
+                  <>
+                    {priceInfo.hasWeekend && (
+                      <span className="text-accent">Weekend surge applied</span>
+                    )}
+                    {!priceInfo.hasWeekend && (
+                      <span>Total for {Math.round(priceInfo.durationHours)} {priceInfo.durationHours === 1 ? 'hr' : 'hrs'}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (durationHours && durationHours > 0) ? (
+            <div className="flex flex-col">
+              <div className="font-bold text-xl text-foreground">
+                ₹{Math.round((bike.pricePerHour || 0) * durationHours)}
               </div>
               <div className="text-[10px] text-muted-foreground">
                 Total for {Math.round(durationHours)} hrs
@@ -173,10 +277,10 @@ export function BikeCard({ bike, onRent, variant = 'grid', pickupDateTime, dropo
             </div>
           ) : null}
           <Button
-            className={durationHours && durationHours > 0 ? "flex-1" : "w-full"}
+            className={priceInfo || (durationHours && durationHours > 0) ? "flex-1" : "w-full"}
             variant={bike.available ? 'default' : 'secondary'}
             disabled={!bike.available}
-            onClick={() => onRent?.(bike)}
+            onClick={() => onRent?.(bike, selectedPricingType)}
           >
             {bike.available ? 'Rent Now' : 'Not Available'}
           </Button>

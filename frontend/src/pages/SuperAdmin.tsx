@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Bike,
@@ -106,7 +107,7 @@ export default function SuperAdmin() {
   const [editAdminForm, setEditAdminForm] = useState({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
   const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<any | null>(null);
-  const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
+  const [bikeForm, setBikeForm] = useState<any>({ name: '', brand: '', type: 'fuel', category: 'midrange', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<any | null>(null);
   const [locationForm, setLocationForm] = useState<any>({ name: '', city: '', state: '', country: '' });
@@ -617,7 +618,7 @@ export default function SuperAdmin() {
                 className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingBike(null);
-                  setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
+                  setBikeForm({ name: '', brand: '', type: 'fuel', category: 'midrange', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
                   setBikeDialogOpen(true);
                 }}
               >
@@ -696,6 +697,7 @@ export default function SuperAdmin() {
                                 name: bike.name,
                                 brand: bike.brand || '',
                                 type: bike.type,
+                                category: bike.category || 'midrange',
                                 pricePerHour: String(bike.pricePerHour),
                                 kmLimit: String(bike.kmLimit),
                                 locationId: bike.locationId,
@@ -1125,7 +1127,7 @@ export default function SuperAdmin() {
                 className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingBike(null);
-                  setBikeForm({ name: '', brand: '', type: 'fuel', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
+                  setBikeForm({ name: '', brand: '', type: 'fuel', category: 'midrange', pricePerHour: '', kmLimit: '', locationId: '', image: '' });
                   setBikeDialogOpen(true);
                 }}
               >
@@ -1494,6 +1496,18 @@ export default function SuperAdmin() {
           </div>
         )}
 
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-display font-bold mb-2">Settings</h1>
+              <p className="text-muted-foreground">Manage application settings and preferences.</p>
+            </div>
+            <div className="bg-card rounded-2xl shadow-card p-6">
+              <p className="text-muted-foreground">Settings options will be available here.</p>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'locations' && (
           <div className="bg-card rounded-2xl shadow-card p-6">
             <h2 className="font-display font-semibold text-lg mb-4">Locations</h2>
@@ -1576,7 +1590,7 @@ export default function SuperAdmin() {
 
       </main>
       <Dialog open={bikeDialogOpen} onOpenChange={setBikeDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingBike ? 'Edit Bike' : 'Add Bike'}</DialogTitle>
             <DialogDescription>Enter bike details</DialogDescription>
@@ -1592,8 +1606,23 @@ export default function SuperAdmin() {
                 <SelectItem value="scooter">Scooter</SelectItem>
               </SelectContent>
             </Select>
-            <Input placeholder="Price Per Hour" value={bikeForm.pricePerHour} onChange={(e) => setBikeForm({ ...bikeForm, pricePerHour: e.target.value })} />
-            <Input placeholder="KM Limit" value={bikeForm.kmLimit} onChange={(e) => setBikeForm({ ...bikeForm, kmLimit: e.target.value })} />
+            <Select value={bikeForm.category || 'midrange'} onValueChange={(v) => setBikeForm({ ...bikeForm, category: v })}>
+              <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="budget">Budget</SelectItem>
+                <SelectItem value="midrange">Mid Range</SelectItem>
+                <SelectItem value="topend">Top End</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">KM Limit</Label>
+              <Input 
+                type="number"
+                placeholder="KM Limit" 
+                value={bikeForm.kmLimit} 
+                onChange={(e) => setBikeForm({ ...bikeForm, kmLimit: e.target.value })} 
+              />
+            </div>
             <Select value={bikeForm.locationId} onValueChange={(v) => setBikeForm({ ...bikeForm, locationId: v })}>
               <SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger>
               <SelectContent>
@@ -1633,15 +1662,40 @@ export default function SuperAdmin() {
               <Button
                 onClick={async () => {
                   try {
-                            const payload = {
+                            const payload: any = {
                               name: bikeForm.name,
                             brand: (bikeForm.brand || '').trim(),
                               type: bikeForm.type,
-                            pricePerHour: parseFloat(bikeForm.pricePerHour),
                             kmLimit: parseInt(bikeForm.kmLimit),
                             locationId: bikeForm.locationId,
                             image: bikeForm.image,
                           };
+                          
+                          // Always include category if it exists in the form
+                          if (bikeForm.category) {
+                            payload.category = bikeForm.category;
+                          } else {
+                            payload.category = 'midrange'; // Default if not set
+                          }
+                          
+                          // Add pricing fields
+                          if (bikeForm.price12Hours) {
+                            payload.price12Hours = parseFloat(bikeForm.price12Hours);
+                          }
+                          // Add individual hourly rates for hours 13-24
+                          for (let hour = 13; hour <= 24; hour++) {
+                            const fieldName = `pricePerHour${hour}`;
+                            if (bikeForm[fieldName]) {
+                              payload[fieldName] = parseFloat(bikeForm[fieldName]);
+                            }
+                          }
+                          if (bikeForm.pricePerWeek) {
+                            payload.pricePerWeek = parseFloat(bikeForm.pricePerWeek);
+                          }
+                          // Keep pricePerHour for backward compatibility
+                          if (bikeForm.pricePerHour) {
+                            payload.pricePerHour = parseFloat(bikeForm.pricePerHour);
+                          }
                     if (editingBike) {
                       await bikesAPI.update(editingBike.id, payload);
                       toast({ title: 'Bike updated' });

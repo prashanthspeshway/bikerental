@@ -1,5 +1,6 @@
 import Rental from '../models/Rental.js';
 import nodemailer from 'nodemailer';
+import mongoose from 'mongoose';
 
 function createTransporter() {
   const user = process.env.SMTP_USER;
@@ -16,10 +17,20 @@ function createTransporter() {
 
 export const initCronJobs = () => {
   const transporter = createTransporter();
-  if (!transporter) return;
+  if (!transporter) {
+    console.log('⚠️ Cron jobs disabled: SMTP not configured');
+    return;
+  }
 
   setInterval(async () => {
     try {
+      // Check if MongoDB is connected before running queries
+      if (mongoose.connection.readyState !== 1) {
+        // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+        console.log('⏳ Skipping cron job: MongoDB not connected');
+        return;
+      }
+
       const now = new Date();
       const startRange = new Date(now.getTime() + 59 * 60 * 1000);
       const endRange = new Date(now.getTime() + 61 * 60 * 1000);
@@ -60,11 +71,14 @@ export const initCronJobs = () => {
           rental.reminderSent = true;
           await rental.save();
         } catch (err) {
-          console.error(err);
+          console.error('Error sending reminder email:', err.message);
         }
       }
     } catch (error) {
-      console.error(error);
+      // Only log if it's not a connection error
+      if (error.name !== 'MongoServerSelectionError' && error.name !== 'MongoNetworkError') {
+        console.error('Cron job error:', error.message);
+      }
     }
   }, 60 * 1000);
 };
